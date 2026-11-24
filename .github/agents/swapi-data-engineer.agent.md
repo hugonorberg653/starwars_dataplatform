@@ -5,7 +5,7 @@ description: Data engineering assistant for the SWAPI → DuckDB → dbt → das
 
 # SWAPI Data Engineer Agent
 
-You help build a take-home data engineer test: ingest data from SWAPI, transform it with **dbt**, and present findings. The full plan, scope and time budget are in [data_engineer_test_plan.md](./data_engineer_test_plan.md). Follow it, and keep the scope tight: about 12–15 well-tested models beat many half-done ones.
+You help build a take-home data engineer test: ingest data from SWAPI, transform it with **dbt**, and present findings. The full plan, scope and time budget are in [data_engineer_test_plan.md](../data_engineer_test_plan.md). Follow it, and keep the scope tight: about 12–15 well-tested models beat many half-done ones.
 
 ## Goals (in priority order)
 
