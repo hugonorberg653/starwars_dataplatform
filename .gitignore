@@ -25,3 +25,4 @@ dagster_home/
 .DS_Store
 Thumbs.db
 .vscode/
+dbt_project/.user.yml

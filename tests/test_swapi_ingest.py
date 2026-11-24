@@ -85,7 +85,23 @@ def test_ingest_falls_back_to_snapshot_and_is_idempotent(tmp_path, monkeypatch):
     with duckdb.connect(str(db)) as con:
         assert con.execute("select count(*) from raw.people").fetchone() == (2,)
         assert con.execute("select distinct _source from raw.people").fetchall() == [("snapshot",)]
-        assert con.execute("select typeof(films) from raw.people limit 1").fetchone() == ("VARCHAR[]",)
+        assert con.execute("select typeof(doc) from raw.people limit 1").fetchone() == ("JSON",)
+        assert con.execute("select doc ->> 'name' from raw.people order by 1").fetchall() == [
+            ("people0",),
+            ("people1",),
+        ]
+
+
+def test_load_keeps_unexpected_fields_and_types(tmp_path):
+    records = [{"name": "a", "height": 172, "new_field": {"x": 1}}, {"name": "b", "height": "unknown"}]
+    with duckdb.connect(str(tmp_path / "t.duckdb")) as con:
+        con.execute("create schema raw")
+        assert si.load_raw_table(con, "people", records, "src") == 2
+        assert con.execute("select doc ->> 'height' from raw.people order by doc ->> 'name'").fetchall() == [
+            ("172",),
+            ("unknown",),
+        ]
+        assert con.execute("select doc -> 'new_field' ->> 'x' from raw.people where doc ->> 'name' = 'a'").fetchone() == ("1",)
 
 
 def test_ingest_writes_snapshot_when_requested(tmp_path, monkeypatch):

@@ -42,7 +42,7 @@ Run from the repo root with the venv (Python 3.11):
 - **Resources:** `people`, `planets`, `films`, `species`, `vehicles`, `starships` (one table each, `raw.<resource>`).
 - **Pagination:** follows `next` URLs for the paginated `{"results": [...], "next": ...}` shape (`swapi.dev`). A bare JSON array (`swapi.info`) is read in one request. A page cap and a seen-URL check stop pagination loops.
 - **Retries:** `tenacity`, 4 attempts, exponential backoff (1–10 s) on any `requests` exception. A 30 s timeout applies per request.
-- **Raw load:** the JSON is loaded as delivered (ELT). Column types come from DuckDB `read_json` over the full file (`sample_size = -1`); numbers stay strings (e.g. `"1,000"`, `"unknown"`) and URL arrays become `VARCHAR[]`.
+- **Raw load:** each record is stored as delivered in a single JSON column, `raw.<resource>(doc JSON, _loaded_at, _source)`, one row per record (ELT, like a Snowflake `VARIANT`). Ingestion knows no column names or types, so API changes cannot break the load. Flattening and typing are done in dbt staging.
 - **Metadata columns:** `_loaded_at` (timestamp of the load) and `_source` (base URL, or `snapshot`).
 - **Idempotency:** each run does `create or replace table` per resource inside a transaction, so re-runs give the same result and a failed load keeps the previous table.
 - **Fallback:** if a resource cannot be fetched after retries, the snapshot is used. After the first failure the API is skipped for the remaining resources, so a fully down API costs one round of retries, not six. A missing snapshot file raises an error.
@@ -53,15 +53,15 @@ Run from the repo root with the venv (Python 3.11):
 - Live load from `swapi.dev`: people 82, planets 60, films 6, species 37, vehicles 39, starships 36.
 - Same counts from the `swapi.info` mirror.
 - Fallback with an unreachable base URL loads all six resources from the snapshot (about 24 s, mostly the first resource's retries).
-- 5 unit tests pass (pagination, bare list, retry exhaustion, snapshot fallback with idempotent re-run, snapshot writing); `ruff check` is clean.
+- 6 unit tests pass (pagination, bare list, retry exhaustion, snapshot fallback with idempotent re-run, snapshot writing, JSON raw load keeping unexpected fields and types); `ruff check` is clean. `dbt build` on the JSON raw tables gives the same bridge row counts as before.
 
 ## Design decisions (interview talking points)
 
 - **Hand-written ingestion over `dlt`:** shows pagination, retry and load handling directly; the volume (about 260 rows) does not need a framework. `dlt` would be the choice for many sources or incremental state.
 - **Full refresh, not incremental:** SWAPI is tiny and static, and has no reliable change marker. At scale: incremental loads keyed on `edited`, or append-only raw tables with `_loaded_at` and dedupe in staging.
 - **API failure handling:** retries with backoff, then a committed snapshot. `_source` makes it visible which data a run used, so a snapshot load is not mistaken for fresh data.
-- **Schema drift:** raw tables take the columns the API returns. New fields appear automatically; renamed or removed fields surface as dbt source or staging test failures instead of being hidden in Python.
-- **Everything as strings in raw:** casting and cleaning (`unknown`/`n/a` to NULL, comma removal, ID extraction from URLs) belongs in dbt staging.
+- **Schema drift:** the whole record goes into `doc`, so new, renamed, removed or retyped fields never fail the load. They surface in dbt: a removed field becomes NULL, and a changed type fails the staging `cast` or a test. The earlier design used `read_json` with inferred columns, which could silently change raw column types; it was replaced for that reason.
+- **Raw as a JSON document:** values stay exactly as delivered (`"1,000"`, `"unknown"`, URL arrays). Casting and cleaning (`unknown`/`n/a` to NULL, comma removal, ID extraction from URLs) belong in dbt staging. The cost is more verbose staging SQL (`doc ->> 'name'`) and no columnar typing in raw, which does not matter at this volume.
 - **Mirror differences:** `swapi.tech` is not supported; it nests records under `properties` and would need its own parser.
 
 ## Production notes

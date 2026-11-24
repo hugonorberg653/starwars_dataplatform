@@ -72,6 +72,7 @@ Keep living documentation in `.github/docs/`, one file per part of the platform.
 | File | Covers |
 |---|---|
 | `ingestion.md` | API client, pagination/retry behaviour, raw table layout, snapshot fallback, idempotency |
+| `data-model.md` | Target star schema: grains, keys, unknown members, cleaning rules, testing strategy, design decisions |
 | `transformations.md` | dbt layers, model inventory, cleaning rules, tests, custom macros, profiles |
 | `dashboard.md` | Questions answered, which marts each view reads, how to run it |
 | `orchestration.md` | Dagster assets and schedules, or the Makefile fallback |

@@ -1,0 +1,20 @@
+select
+    {{ extract_id("doc ->> 'url'") }} as character_id,
+    doc ->> 'name' as name,
+    doc ->> 'height' as height,
+    doc ->> 'mass' as mass,
+    doc ->> 'hair_color' as hair_color,
+    doc ->> 'skin_color' as skin_color,
+    doc ->> 'eye_color' as eye_color,
+    doc ->> 'birth_year' as birth_year,
+    doc ->> 'gender' as gender,
+    doc ->> 'homeworld' as homeworld_url,
+    {{ json_array('films') }} as film_urls,
+    {{ json_array('species') }} as species_urls,
+    {{ json_array('vehicles') }} as vehicle_urls,
+    {{ json_array('starships') }} as starship_urls,
+    cast(doc ->> 'created' as timestamptz) as source_created_at,
+    cast(doc ->> 'edited' as timestamptz) as source_edited_at,
+    _loaded_at as loaded_at,
+    _source as source_system
+from {{ source('raw', 'people') }}

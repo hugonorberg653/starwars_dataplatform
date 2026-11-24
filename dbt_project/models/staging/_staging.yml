@@ -1,0 +1,88 @@
+version: 2
+
+# Staging flattens raw.<resource>.doc into typed columns, 1:1 with the source.
+# Typing is limited to what the source declares (ids, integers, dates, timestamps, URL arrays).
+# Value cleaning (unknown/n/a to NULL, units, number parsing, see data-model.md section 4)
+# is not implemented yet, so those columns are still text.
+models:
+  - name: stg_films
+    description: One row per film, flattened from raw.films.
+    columns:
+      - name: film_id
+        description: Integer extracted from the film URL.
+        data_tests: [unique, not_null]
+      - name: episode_id
+        data_tests: [not_null]
+      - name: release_date
+      - name: character_urls
+      - name: planet_urls
+      - name: species_urls
+      - name: starship_urls
+      - name: vehicle_urls
+      - name: loaded_at
+      - name: source_system
+
+  - name: stg_people
+    description: One row per character, flattened from raw.people.
+    columns:
+      - name: character_id
+        description: Integer extracted from the people URL.
+        data_tests: [unique, not_null]
+      - name: homeworld_url
+      - name: film_urls
+      - name: species_urls
+      - name: starship_urls
+      - name: vehicle_urls
+      - name: loaded_at
+      - name: source_system
+
+  - name: stg_planets
+    description: One row per planet, flattened from raw.planets.
+    columns:
+      - name: planet_id
+        description: Integer extracted from the planet URL.
+        data_tests: [unique, not_null]
+      - name: resident_urls
+      - name: film_urls
+      - name: loaded_at
+      - name: source_system
+
+  - name: stg_species
+    description: One row per species, flattened from raw.species.
+    columns:
+      - name: species_id
+        description: Integer extracted from the species URL.
+        data_tests: [unique, not_null]
+      - name: homeworld_url
+      - name: people_urls
+      - name: film_urls
+      - name: loaded_at
+      - name: source_system
+
+  - name: stg_starships
+    description: One row per starship, flattened from raw.starships.
+    columns:
+      - name: craft_key
+        description: Key of the starship in dim_crafts, see the craft_key macro.
+        data_tests: [unique, not_null]
+      - name: starship_id
+        description: Integer extracted from the starship URL.
+        data_tests: [unique, not_null]
+      - name: pilot_urls
+      - name: film_urls
+      - name: loaded_at
+      - name: source_system
+
+  - name: stg_vehicles
+    description: One row per vehicle, flattened from raw.vehicles.
+    columns:
+      - name: craft_key
+        description: Key of the vehicle in dim_crafts, see the craft_key macro.
+        data_tests: [unique, not_null]
+      - name: vehicle_id
+        description: Integer extracted from the vehicle URL.
+        data_tests: [unique, not_null]
+      - name: pilot_urls
+      - name: film_urls
+      - name: loaded_at
+      - name: source_system

@@ -1,7 +1,8 @@
 """Ingest SWAPI resources into the DuckDB ``raw`` schema.
 
-Raw JSON is loaded as-is (ELT): one table per resource, plus ``_loaded_at`` and
-``_source`` metadata columns. Every run fully refreshes the raw tables, so it is
+Raw JSON is loaded as-is (ELT): one table per resource with the whole record in a
+JSON ``doc`` column, plus ``_loaded_at`` and ``_source`` metadata columns, so API
+schema changes never break the load. Every run fully refreshes the raw tables, so it is
 idempotent. If the API is unreachable, the committed snapshot in
 ``data/snapshot/`` is used instead.
 
@@ -16,7 +17,6 @@ import argparse
 import json
 import logging
 import os
-import tempfile
 from pathlib import Path
 
 import duckdb
@@ -103,27 +103,26 @@ def write_snapshot(snapshot_dir: Path, resource: str, records: list[dict]) -> No
 
 
 def load_raw_table(con: duckdb.DuckDBPyConnection, resource: str, records: list[dict], source: str) -> int:
-    """Replace ``raw.<resource>`` with the given records, keeping the JSON columns as delivered."""
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / f"{resource}.json"
-        path.write_text(json.dumps(records), encoding="utf-8")
-        con.execute("begin")
-        try:
-            con.execute(
-                f"""
-                create or replace table raw.{resource} as
-                select
-                    *,
-                    current_timestamp as _loaded_at,
-                    ? as _source
-                from read_json(?, format = 'array', sample_size = -1)
-                """,
-                [source, path.as_posix()],
+    """Replace ``raw.<resource>`` with one row per record: the whole record as a JSON ``doc``."""
+    con.execute("begin")
+    try:
+        con.execute(
+            f"""
+            create or replace table raw.{resource} (
+                doc json,
+                _loaded_at timestamptz,
+                _source varchar
             )
-            con.execute("commit")
-        except Exception:
-            con.execute("rollback")
-            raise
+            """
+        )
+        con.executemany(
+            f"insert into raw.{resource} values (?, current_timestamp, ?)",
+            [[json.dumps(record, ensure_ascii=False), source] for record in records],
+        )
+        con.execute("commit")
+    except Exception:
+        con.execute("rollback")
+        raise
     return len(records)
 
 

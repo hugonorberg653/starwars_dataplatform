@@ -1,0 +1,8 @@
+swapi:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # Relative paths resolve against the working directory, so run dbt from dbt_project/.
+      path: "{{ env_var('DUCKDB_PATH', '../data/swapi.duckdb') }}"
+      threads: 1

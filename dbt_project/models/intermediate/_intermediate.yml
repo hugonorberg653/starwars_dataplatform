@@ -1,0 +1,160 @@
+version: 2
+
+# Each bridge is unnested from one canonical side. The opposite side is checked by the
+# singular tests in tests/ (int_*_two_way_match.sql).
+models:
+  - name: int_film_characters
+    description: >
+      Film x character bridge, unnested from films.characters. Grain: one row per
+      character appearing in a film.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [film_id, character_id]
+    columns:
+      - name: film_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_films')
+                field: film_id
+      - name: character_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_people')
+                field: character_id
+
+  - name: int_film_planets
+    description: >
+      Film x planet bridge, unnested from films.planets. Grain: one row per planet
+      appearing in a film.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [film_id, planet_id]
+    columns:
+      - name: film_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_films')
+                field: film_id
+      - name: planet_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_planets')
+                field: planet_id
+
+  - name: int_film_species
+    description: >
+      Film x species bridge, unnested from films.species. Holds the species the source
+      lists for a film, not the species of its characters.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [film_id, species_id]
+    columns:
+      - name: film_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_films')
+                field: film_id
+      - name: species_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_species')
+                field: species_id
+
+  - name: int_film_crafts
+    description: >
+      Film x craft bridge, unnested from films.starships and films.vehicles.
+      Grain: one row per craft appearing in a film.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [film_id, craft_key]
+    columns:
+      - name: film_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_films')
+                field: film_id
+      - name: craft_key
+        description: Key of the craft in dim_crafts, built with the craft_key macro.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_starships')
+                field: craft_key
+              config:
+                where: "craft_type = 'starship'"
+          - relationships:
+              arguments:
+                to: ref('stg_vehicles')
+                field: craft_key
+              config:
+                where: "craft_type = 'vehicle'"
+      - name: craft_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [starship, vehicle]
+      - name: source_craft_id
+        description: SWAPI ID of the craft within its own resource (starships or vehicles).
+        data_tests: [not_null]
+
+  - name: int_character_crafts
+    description: >
+      Character x craft bridge, unnested from people.starships and people.vehicles.
+      Grain: one row per pilot per craft.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [character_id, craft_key]
+    columns:
+      - name: character_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_people')
+                field: character_id
+      - name: craft_key
+        description: Key of the craft in dim_crafts, built with the craft_key macro.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_starships')
+                field: craft_key
+              config:
+                where: "craft_type = 'starship'"
+          - relationships:
+              arguments:
+                to: ref('stg_vehicles')
+                field: craft_key
+              config:
+                where: "craft_type = 'vehicle'"
+      - name: craft_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [starship, vehicle]
+      - name: source_craft_id
+        description: SWAPI ID of the craft within its own resource (starships or vehicles).
+        data_tests: [not_null]

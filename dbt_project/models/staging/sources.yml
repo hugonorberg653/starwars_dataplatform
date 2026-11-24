@@ -1,0 +1,29 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      SWAPI resources as delivered by ingestion/swapi_ingest.py. One table per resource and
+      one row per record. The whole record is in the JSON column `doc`, so API schema changes
+      never break the load. Flattening and typing happen in staging.
+    schema: raw
+    tables:
+      - name: films
+        columns: &raw_columns
+          - name: doc
+            description: The record exactly as returned by the API.
+            data_tests: [not_null]
+          - name: _loaded_at
+            description: Timestamp of the ingestion run.
+          - name: _source
+            description: Base URL of the API, or `snapshot` for the committed fallback.
+      - name: people
+        columns: *raw_columns
+      - name: planets
+        columns: *raw_columns
+      - name: species
+        columns: *raw_columns
+      - name: starships
+        columns: *raw_columns
+      - name: vehicles
+        columns: *raw_columns
