@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# DuckDB
+*.duckdb
+*.duckdb.wal
+
+# dbt
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/logs/
+logs/
+
+# Dagster
+.dagster/
+dagster_home/
+
+# Streamlit / env / OS / IDE
+.streamlit/secrets.toml
+.env
+.DS_Store
+Thumbs.db
+.vscode/
