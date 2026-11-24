@@ -1,0 +1,57 @@
+version: 2
+
+unit_tests:
+  - name: dim_characters_bmi_unknown_members_and_film_flags
+    model: dim_characters
+    given:
+      - input: ref('stg_people')
+        rows:
+          - {character_id: 1, name: Normal, height_cm: 200, mass_kg: 80.0, homeworld_planet_id: 1, species_id: 1}
+          - {character_id: 2, name: NoMass, height_cm: 150, mass_kg: null, homeworld_planet_id: 1, species_id: 2}
+          - {character_id: 3, name: ZeroHeight, height_cm: 0, mass_kg: 50.0, homeworld_planet_id: 28, species_id: null}
+          - {character_id: 4, name: NoHomeworld, height_cm: null, mass_kg: 50.0, homeworld_planet_id: null, species_id: null}
+      - input: ref('dim_planets')
+        rows:
+          - {planet_id: 1}
+          - {planet_id: -1}
+      - input: ref('stg_species')
+        rows:
+          - {species_id: 1, name: Human}
+          - {species_id: 2, name: Droid}
+      - input: ref('int_film_characters')
+        rows:
+          - {film_id: 1, character_id: 1}
+          - {film_id: 2, character_id: 1}
+          - {film_id: 1, character_id: 2}
+      - input: ref('stg_films')
+        rows:
+          - {film_id: 1}
+          - {film_id: 2}
+    expect:
+      rows:
+        - {character_id: 1, bmi: 20.0, homeworld_planet_id: 1, species_id: 1, is_droid: false, film_count: 2, is_in_all_films: true}
+        - {character_id: 2, bmi: null, homeworld_planet_id: 1, species_id: 2, is_droid: true, film_count: 1, is_in_all_films: false}
+        - {character_id: 3, bmi: null, homeworld_planet_id: -1, species_id: -1, is_droid: false, film_count: 0, is_in_all_films: false}
+        - {character_id: 4, bmi: null, homeworld_planet_id: -1, species_id: -1, is_droid: false, film_count: 0, is_in_all_films: false}
+
+  - name: dim_films_orders_by_release_date_not_episode_number
+    model: dim_films
+    given:
+      - input: ref('stg_films')
+        rows:
+          - {film_id: 4, episode_id: 1, release_date: 1999-05-19}
+          - {film_id: 1, episode_id: 4, release_date: 1977-05-25}
+          - {film_id: 6, episode_id: 3, release_date: 2005-05-19}
+      - input: ref('int_film_characters')
+        rows: []
+      - input: ref('int_film_planets')
+        rows: []
+      - input: ref('int_film_species')
+        rows: []
+      - input: ref('int_film_crafts')
+        rows: []
+    expect:
+      rows:
+        - {film_id: 1, release_order: 1, trilogy: original, character_count: 0}
+        - {film_id: 4, release_order: 2, trilogy: prequel, character_count: 0}
+        - {film_id: 6, release_order: 3, trilogy: prequel, character_count: 0}

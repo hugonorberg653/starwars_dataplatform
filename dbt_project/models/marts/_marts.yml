@@ -12,6 +12,7 @@ models:
         data_tests: [unique, not_null]
       - name: title
         data_type: varchar
+        data_tests: [not_null]
       - name: episode_id
         data_type: integer
         description: Episode number (1-6).
@@ -23,6 +24,7 @@ models:
                 values: [1, 2, 3, 4, 5, 6]
       - name: release_date
         data_type: date
+        data_tests: [not_null]
       - name: release_order
         data_type: integer
         description: Rank by release date, 1 = first released.
@@ -77,13 +79,20 @@ models:
         data_type: integer
         data_tests:
           - positive_value
+          - value_between:
+              arguments: {min_value: 30, max_value: 300}
       - name: mass_kg
         data_type: double
         data_tests:
           - positive_value
+          - value_between:
+              arguments: {min_value: 1, max_value: 2000}
       - name: bmi
         data_type: double
         description: mass_kg / (height_cm / 100)^2, only when both are known. Outliers such as Jabba are real values.
+        data_tests:
+          - value_between:
+              arguments: {min_value: 5, max_value: 500}
       - name: birth_year_bby
         data_type: double
         description: Years before the Battle of Yavin. Negative for ABY.
@@ -135,8 +144,10 @@ models:
         data_tests: [not_null]
       - name: rotation_period_hours
         data_type: integer
+        data_tests: [positive_value]
       - name: orbital_period_days
         data_type: integer
+        data_tests: [positive_value]
       - name: diameter_km
         data_type: integer
         description: NULL when unknown. The source uses 0 for unknown, which is converted to NULL here.
@@ -150,6 +161,9 @@ models:
         description: Source gravity text.
       - name: surface_water_pct
         data_type: double
+        data_tests:
+          - value_between:
+              arguments: {min_value: 0, max_value: 100}
       - name: population
         data_type: bigint
       - name: climates
@@ -180,6 +194,11 @@ models:
         data_tests: [not_null]
       - name: classification
         data_type: varchar
+        description: Normalised in staging (for example mammals -> mammal). A new value means a spelling variant or a new class.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [amphibian, artificial, gastropod, insectoid, mammal, reptile, sentient]
       - name: designation
         data_type: varchar
       - name: average_height_cm
@@ -242,6 +261,7 @@ models:
         data_tests: [not_null]
       - name: name
         data_type: varchar
+        data_tests: [not_null]
       - name: model
         data_type: varchar
       - name: manufacturer
@@ -259,6 +279,7 @@ models:
           - positive_value
       - name: max_atmosphering_speed_kmh
         data_type: integer
+        data_tests: [positive_value]
       - name: crew_min
         data_type: integer
       - name: crew_max
@@ -274,8 +295,10 @@ models:
         description: Source consumables text, for values that cannot be turned into days.
       - name: hyperdrive_rating
         data_type: double
+        data_tests: [positive_value]
       - name: mglt
         data_type: integer
+        data_tests: [positive_value]
       - name: pilot_count
         data_type: bigint
       - name: film_count
@@ -329,9 +352,15 @@ models:
                 field: planet_id
       - name: film_release_date
         data_type: date
+        data_tests: [not_null]
       - name: appearance_count
         data_type: integer
         description: Always 1. Sum it to count appearances.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1]
+                quote: false
 
   - name: fct_craft_pilots
     description: One row per pilot per craft.

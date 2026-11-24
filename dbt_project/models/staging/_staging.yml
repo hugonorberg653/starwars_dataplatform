@@ -14,7 +14,7 @@ models:
       - name: episode_id
         data_tests: [not_null]
       - name: release_date
-      - name: producers
+        data_tests: [not_null]
         description: Producer text split on commas.
       - name: character_urls
       - name: planet_urls
@@ -30,6 +30,8 @@ models:
       - name: character_id
         description: Integer extracted from the people URL.
         data_tests: [unique, not_null]
+      - name: name
+        data_tests: [not_null]
       - name: height_cm
         data_tests:
           - positive_value
@@ -52,8 +54,19 @@ models:
                 values: [male, female, hermaphrodite]
       - name: homeworld_url
       - name: homeworld_planet_id
+        description: NULL when the source has no homeworld. The placeholder planet 28 is a real row in stg_planets.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_planets')
+                field: planet_id
       - name: species_id
         description: The source lists 0 or 1 species per character. NULL when there is none.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_species')
+                field: species_id
       - name: film_urls
       - name: species_urls
         data_tests:
@@ -118,11 +131,23 @@ models:
               arguments: {key_column: species_id, source_table: species, raw_field: average_height}
       - name: average_lifespan_years
         description: NULL when unknown or indefinite, see is_lifespan_indefinite.
+        data_tests:
+          - no_silent_null:
+              arguments:
+                key_column: species_id
+                source_table: species
+                raw_field: average_lifespan
+                allowed_raw_values: [indefinite]
       - name: is_lifespan_indefinite
         data_tests: [not_null]
       - name: homeworld_url
       - name: homeworld_planet_id
         description: NULL for species without a homeworld (Droid).
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_planets')
+                field: planet_id
       - name: people_urls
       - name: film_urls
       - name: loaded_at

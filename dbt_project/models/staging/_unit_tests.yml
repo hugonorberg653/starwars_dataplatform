@@ -1,0 +1,107 @@
+version: 2
+
+# Hand-written rows with known SWAPI quirks. The expected values are written by hand, not computed by the model.
+unit_tests:
+  - name: stg_people_cleans_numbers_dates_and_categories
+    model: stg_people
+    given:
+      - input: source('raw', 'people')
+        rows:
+          - doc: >-
+              {"url": "https://swapi.dev/api/people/1/", "name": " Luke ", "height": "172", "mass": "77",
+               "birth_year": "19BBY", "gender": "Male", "hair_color": "blonde", "skin_color": "Fair",
+               "eye_color": "Blue", "homeworld": "https://swapi.dev/api/planets/1/",
+               "species": [], "films": [], "vehicles": [], "starships": []}
+          - doc: >-
+              {"url": "https://swapi.dev/api/people/16/", "name": "Jabba", "height": "1,000", "mass": "1,358",
+               "birth_year": "600BBY", "gender": "hermaphrodite", "hair_color": "n/a", "skin_color": "green-tan, brown",
+               "eye_color": "orange", "homeworld": "https://swapi.dev/api/planets/24/",
+               "species": ["https://swapi.dev/api/species/5/"], "films": [], "vehicles": [], "starships": []}
+          - doc: >-
+              {"url": "https://swapi.dev/api/people/45/", "name": "Late", "height": "unknown", "mass": "unknown",
+               "birth_year": "22ABY", "gender": "none", "hair_color": "none", "skin_color": "unknown",
+               "eye_color": "unknown", "homeworld": null, "species": [], "films": [], "vehicles": [], "starships": []}
+          - doc: >-
+              {"url": "https://swapi.dev/api/people/9/", "name": "NoDate", "height": "0", "mass": "n/a",
+               "birth_year": "unknown", "gender": "n/a", "hair_color": "unknown", "skin_color": "n/a",
+               "eye_color": "", "homeworld": null, "species": [], "films": [], "vehicles": [], "starships": []}
+    expect:
+      rows:
+        - {character_id: 1, name: Luke, height_cm: 172, mass_kg: 77.0, birth_year_bby: 19.0, gender: male, hair_color: blond, skin_color: fair, eye_color: blue, homeworld_planet_id: 1, species_id: null}
+        - {character_id: 16, name: Jabba, height_cm: 1000, mass_kg: 1358.0, birth_year_bby: 600.0, gender: hermaphrodite, hair_color: null, skin_color: "green-tan, brown", eye_color: orange, homeworld_planet_id: 24, species_id: 5}
+        - {character_id: 45, name: Late, height_cm: null, mass_kg: null, birth_year_bby: -22.0, gender: null, hair_color: none, skin_color: null, eye_color: null, homeworld_planet_id: null, species_id: null}
+        - {character_id: 9, name: NoDate, height_cm: 0, mass_kg: null, birth_year_bby: null, gender: null, hair_color: null, skin_color: null, eye_color: null, homeworld_planet_id: null, species_id: null}
+
+  - name: stg_starships_parses_crew_speed_cargo_and_consumables
+    model: stg_starships
+    given:
+      - input: source('raw', 'starships')
+        rows:
+          - doc: >-
+              {"url": "https://swapi.dev/api/starships/10/", "name": "Range", "model": "m", "manufacturer": "Corellian Engineering Corporation",
+               "cost_in_credits": "100,000", "length": "34.37", "max_atmosphering_speed": "1050", "crew": "30-165",
+               "passengers": "843,342", "cargo_capacity": "none", "consumables": "2 months", "hyperdrive_rating": "2.0",
+               "MGLT": "75", "starship_class": "Air Speeder", "pilots": [], "films": []}
+          - doc: >-
+              {"url": "https://swapi.dev/api/starships/11/", "name": "Thousands", "model": "unknown", "manufacturer": "n/a",
+               "cost_in_credits": "unknown", "length": "1,600", "max_atmosphering_speed": "1000km", "crew": "47,060",
+               "passengers": "n/a", "cargo_capacity": "1,000,000", "consumables": "1 Year", "hyperdrive_rating": "unknown",
+               "MGLT": "n/a", "starship_class": "Starfighter", "pilots": [], "films": []}
+          - doc: >-
+              {"url": "https://swapi.dev/api/starships/12/", "name": "Text", "model": "x", "manufacturer": "y",
+               "cost_in_credits": "5", "length": "1", "max_atmosphering_speed": "n/a", "crew": "unknown",
+               "passengers": "0", "cargo_capacity": "unknown", "consumables": "Live food tanks", "hyperdrive_rating": "0.5",
+               "MGLT": "10", "starship_class": "yacht", "pilots": [], "films": []}
+    expect:
+      rows:
+        - {starship_id: 10, model: m, manufacturer: Corellian Engineering Corporation, cost_credits: 100000, length_m: 34.37, max_atmosphering_speed_kmh: 1050, crew_min: 30, crew_max: 165, passengers: 843342, cargo_capacity_kg: 0, consumables_days: 60.0, consumables_desc: 2 months, hyperdrive_rating: 2.0, mglt: 75, craft_class: airspeeder}
+        - {starship_id: 11, model: null, manufacturer: null, cost_credits: null, length_m: 1600.0, max_atmosphering_speed_kmh: 1000, crew_min: 47060, crew_max: 47060, passengers: null, cargo_capacity_kg: 1000000, consumables_days: 365.0, consumables_desc: 1 Year, hyperdrive_rating: null, mglt: null, craft_class: starfighter}
+        - {starship_id: 12, model: x, manufacturer: y, cost_credits: 5, length_m: 1.0, max_atmosphering_speed_kmh: null, crew_min: null, crew_max: null, passengers: 0, cargo_capacity_kg: null, consumables_days: null, consumables_desc: Live food tanks, hyperdrive_rating: 0.5, mglt: 10, craft_class: yacht}
+
+  - name: stg_species_handles_indefinite_lifespan_and_spelling_variants
+    model: stg_species
+    given:
+      - input: source('raw', 'species')
+        rows:
+          - doc: >-
+              {"url": "https://swapi.dev/api/species/1/", "name": "Human", "classification": "mammal", "designation": "sentient",
+               "average_height": "180", "skin_colors": "Caucasian, Black", "hair_colors": "blonde", "eye_colors": "blue",
+               "average_lifespan": "120", "homeworld": "https://swapi.dev/api/planets/9/", "language": "Galactic Basic",
+               "people": [], "films": []}
+          - doc: >-
+              {"url": "https://swapi.dev/api/species/2/", "name": "Droid", "classification": "artificial", "designation": "sentient",
+               "average_height": "n/a", "skin_colors": "n/a", "hair_colors": "n/a", "eye_colors": "n/a",
+               "average_lifespan": "indefinite", "homeworld": null, "language": "n/a", "people": [], "films": []}
+          - doc: >-
+              {"url": "https://swapi.dev/api/species/3/", "name": "Variant", "classification": "Mammals", "designation": "sentient",
+               "average_height": "2,000", "skin_colors": "green", "hair_colors": "none", "eye_colors": "red",
+               "average_lifespan": "unknown", "homeworld": "https://swapi.dev/api/planets/14/", "language": "Galatic Basic",
+               "people": [], "films": []}
+          - doc: >-
+              {"url": "https://swapi.dev/api/species/4/", "name": "Lizard", "classification": "reptilian", "designation": "sentient",
+               "average_height": "unknown", "skin_colors": "green", "hair_colors": "none", "eye_colors": "red",
+               "average_lifespan": "unknown", "homeworld": null, "language": "Huttese", "people": [], "films": []}
+    expect:
+      rows:
+        - {species_id: 1, classification: mammal, average_height_cm: 180, hair_colors: blonde, average_lifespan_years: 120, is_lifespan_indefinite: false, language: Galactic Basic, homeworld_planet_id: 9}
+        - {species_id: 2, classification: artificial, average_height_cm: null, hair_colors: null, average_lifespan_years: null, is_lifespan_indefinite: true, language: null, homeworld_planet_id: null}
+        - {species_id: 3, classification: mammal, average_height_cm: 2000, hair_colors: none, average_lifespan_years: null, is_lifespan_indefinite: false, language: Galactic Basic, homeworld_planet_id: 14}
+        - {species_id: 4, classification: reptile, average_height_cm: null, hair_colors: none, average_lifespan_years: null, is_lifespan_indefinite: false, language: Huttese, homeworld_planet_id: null}
+
+  - name: stg_planets_parses_gravity_climates_and_placeholder
+    model: stg_planets
+    given:
+      - input: source('raw', 'planets')
+        rows:
+          - doc: >-
+              {"url": "https://swapi.dev/api/planets/1/", "name": "Tatooine", "rotation_period": "23", "orbital_period": "304",
+               "diameter": "10465", "climate": "Arid, Hot", "gravity": "1.1 standard", "terrain": "desert",
+               "surface_water": "1", "population": "200,000", "residents": [], "films": []}
+          - doc: >-
+              {"url": "https://swapi.dev/api/planets/28/", "name": "unknown", "rotation_period": "0", "orbital_period": "0",
+               "diameter": "0", "climate": "unknown", "gravity": "N/A", "terrain": "unknown",
+               "surface_water": "unknown", "population": "unknown", "residents": [], "films": []}
+    expect:
+      rows:
+        - {planet_id: 1, name: Tatooine, is_placeholder: false, rotation_period_hours: 23, orbital_period_days: 304, diameter_km: 10465, surface_water_pct: 1.0, population: 200000, gravity_g: 1.1, gravity_desc: 1.1 standard, climates: ["arid", "hot"], terrains: ["desert"]}
+        - {planet_id: 28, name: unknown, is_placeholder: true, rotation_period_hours: 0, orbital_period_days: 0, diameter_km: 0, surface_water_pct: null, population: null, gravity_g: null, gravity_desc: null, climates: null, terrains: null}
