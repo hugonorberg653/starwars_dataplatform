@@ -40,7 +40,8 @@ dbt_project/      models/{staging,intermediate,marts}, tests, profiles.yml
 orchestration/    Dagster definitions
 dashboard/        Streamlit app
 data/snapshot/    committed raw JSON fallback
-.github/agents/   agent definition and the project plan (this folder)
+.github/          project plan (data_engineer_test_plan.md)
+.github/agents/   agent definition (this file)
 ```
 
 ### Ingestion
