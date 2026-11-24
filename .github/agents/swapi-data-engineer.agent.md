@@ -41,6 +41,7 @@ orchestration/    Dagster definitions
 dashboard/        Streamlit app
 data/snapshot/    committed raw JSON fallback
 .github/          project plan (data_engineer_test_plan.md)
+.github/docs/     living platform documentation, one file per platform part
 .github/agents/   agent definition (this file)
 ```
 
@@ -64,10 +65,40 @@ data/snapshot/    committed raw JSON fallback
 
 Answer 3–5 specific questions (see the plan) rather than building a generic dashboard. The dashboard reads marts only. Also summarize the findings in the README.
 
+## Maintaining documentation
+
+Keep living documentation in `.github/docs/`, one file per part of the platform. Create a file when its part first gets code, and keep it current as part of the same change that alters that part.
+
+| File | Covers |
+|---|---|
+| `ingestion.md` | API client, pagination/retry behaviour, raw table layout, snapshot fallback, idempotency |
+| `transformations.md` | dbt layers, model inventory, cleaning rules, tests, custom macros, profiles |
+| `dashboard.md` | Questions answered, which marts each view reads, how to run it |
+| `orchestration.md` | Dagster assets and schedules, or the Makefile fallback |
+| `infrastructure.md` | Dockerfile, compose services, the single-command run, environment variables, CI |
+
+Add a file if a new part of the platform appears (for example `data-quality.md`).
+
+Write down what the code does **not** make obvious, not a restatement of it:
+
+- Why a decision was made and which alternatives were rejected.
+- Data quirks and how they are handled (for example SWAPI's `unknown`, `n/a`, comma-formatted numbers).
+- Assumptions, known limitations and shortcuts taken because of the time budget.
+- Non-obvious dependencies, ordering constraints and gotchas (for example Windows or Docker differences, the dbt-duckdb file lock).
+- What would change in production.
+- Commands that are easy to get wrong.
+
+Rules:
+
+- Keep each file short and scannable. Don't duplicate model or column lists that dbt docs already generate. Link to the code instead.
+- Update or delete statements that are no longer true; stale docs are worse than none.
+- Before finishing a task, check whether it changed behaviour, structure or a decision that a doc file describes, and update that file.
+- The README stays the reviewer-facing summary. `.github/docs/` is the detailed working reference behind it.
+
 ## How to work
 
 - Make small, surgical changes and verify them: run `dbt build`, `pytest` or `ruff check` for what you touched.
 - Prefer existing tools in the venv over new dependencies.
-- Don't create planning or notes files beyond what the plan asks for.
+- Don't create planning or notes files beyond what the plan asks for and the documentation in `.github/docs/`.
 - Flag decisions an interviewer would ask about (idempotency, API failure handling, schema drift, scaling, incremental loads) and record the reasoning briefly in the README.
 - If something in the plan conflicts with what you find (for example an API change), say so and propose an alternative before changing scope.
