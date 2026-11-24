@@ -23,6 +23,7 @@ Checked against the `swapi.dev` load (people 82, planets 60, films 6, species 37
 | `films.species` differs from the species of the film's characters (10 pairs only in the film list, 9 only from characters) | Both are kept, but as separate concepts (§6) |
 | Three distinct missing-value meanings: `unknown` (exists but not known), `n/a` (does not apply, e.g. droid gender), `none` (truly zero/absent, e.g. bald, no cargo) | `unknown`/`n/a` → NULL; `none` → `0` for numbers and is kept as a real value for categories |
 | Numbers with commas (`1,358`, `47,060`), units (`1000km`), ranges (`30-165`), trailing spaces (`36.8 `) | Parsing rules in §4. A test makes sure no value is turned into NULL without notice |
+| `planets.diameter = 0` for 6 planets (some inhabited, e.g. Trandosha) | 0 is the source's stand-in for unknown. Staging keeps it and warns; `dim_planets` turns it into NULL |
 | Category typos: `Galatic Basic`, `mammals`/`mammal`, `blonde`/`blond`, `air speeder`/`airspeeder`, `Star Destroyer`/`star destroyer` | Normalised in staging (§4) |
 | Text is valid UTF-8 (`Padmé`, `Cordé`) | No re-encoding. If names look garbled, that is the PowerShell console |
 

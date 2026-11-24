@@ -1,0 +1,365 @@
+version: 2
+
+# Marts are tables with enforced contracts: the column names and types below are what the dashboard reads.
+# Unknown members (-1) in dim_planets and dim_species mean "no value in the source". Facts never have NULL foreign keys.
+models:
+  - name: dim_films
+    description: One row per film.
+    columns:
+      - name: film_id
+        data_type: integer
+        description: SWAPI film ID.
+        data_tests: [unique, not_null]
+      - name: title
+        data_type: varchar
+      - name: episode_id
+        data_type: integer
+        description: Episode number (1-6).
+        data_tests:
+          - unique
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5, 6]
+      - name: release_date
+        data_type: date
+      - name: release_order
+        data_type: integer
+        description: Rank by release date, 1 = first released.
+        data_tests: [unique, not_null]
+      - name: trilogy
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [prequel, original]
+      - name: director
+        data_type: varchar
+      - name: producers
+        data_type: varchar[]
+      - name: character_count
+        data_type: bigint
+        description: Characters listed in the film (films.characters).
+      - name: planet_count
+        data_type: bigint
+        description: Planets listed in the film (films.planets).
+      - name: species_count_listed
+        data_type: bigint
+        description: >
+          Species the source lists for the film (films.species). Not the same as the species
+          of the film's characters, see fct_film_appearances.
+      - name: craft_count
+        data_type: bigint
+        description: Starships and vehicles listed in the film.
+      - name: loaded_at
+        data_type: timestamp with time zone
+      - name: source_system
+        data_type: varchar
+
+  - name: dim_characters
+    description: One row per character (SWAPI "people").
+    columns:
+      - name: character_id
+        data_type: integer
+        description: SWAPI people ID.
+        data_tests: [unique, not_null]
+      - name: name
+        data_type: varchar
+        data_tests: [not_null]
+      - name: gender
+        data_type: varchar
+        description: NULL when the source says n/a, none or unknown.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [male, female, hermaphrodite]
+      - name: height_cm
+        data_type: integer
+        data_tests:
+          - positive_value
+      - name: mass_kg
+        data_type: double
+        data_tests:
+          - positive_value
+      - name: bmi
+        data_type: double
+        description: mass_kg / (height_cm / 100)^2, only when both are known. Outliers such as Jabba are real values.
+      - name: birth_year_bby
+        data_type: double
+        description: Years before the Battle of Yavin. Negative for ABY.
+      - name: hair_color
+        data_type: varchar
+        description: '`none` is kept and means bald.'
+      - name: skin_color
+        data_type: varchar
+      - name: eye_color
+        data_type: varchar
+      - name: homeworld_planet_id
+        data_type: integer
+        description: Never NULL. -1 (unknown member) when the homeworld is missing or the placeholder planet.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_planets')
+                field: planet_id
+      - name: species_id
+        data_type: integer
+        description: Never NULL. -1 (unknown member) when the source lists no species. Not filled in as Human.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_species')
+                field: species_id
+      - name: is_droid
+        data_type: boolean
+      - name: film_count
+        data_type: bigint
+      - name: is_in_all_films
+        data_type: boolean
+        data_tests: [not_null]
+      - name: loaded_at
+        data_type: timestamp with time zone
+      - name: source_system
+        data_type: varchar
+
+  - name: dim_planets
+    description: One row per planet, plus the unknown member (-1). The placeholder planet 28 is not loaded.
+    columns:
+      - name: planet_id
+        data_type: integer
+        data_tests: [unique, not_null]
+      - name: name
+        data_type: varchar
+        data_tests: [not_null]
+      - name: rotation_period_hours
+        data_type: integer
+      - name: orbital_period_days
+        data_type: integer
+      - name: diameter_km
+        data_type: integer
+        description: NULL when unknown. The source uses 0 for unknown, which is converted to NULL here.
+        data_tests:
+          - positive_value
+      - name: gravity_g
+        data_type: double
+        description: First number in the source gravity text.
+      - name: gravity_desc
+        data_type: varchar
+        description: Source gravity text.
+      - name: surface_water_pct
+        data_type: double
+      - name: population
+        data_type: bigint
+      - name: climates
+        data_type: varchar[]
+      - name: terrains
+        data_type: varchar[]
+      - name: resident_count
+        data_type: bigint
+        description: Characters whose homeworld is this planet. For the unknown member, characters with no usable homeworld.
+      - name: film_count
+        data_type: bigint
+      - name: is_unknown_member
+        data_type: boolean
+        data_tests: [not_null]
+      - name: loaded_at
+        data_type: timestamp with time zone
+      - name: source_system
+        data_type: varchar
+
+  - name: dim_species
+    description: One row per species, plus the unknown member (-1).
+    columns:
+      - name: species_id
+        data_type: integer
+        data_tests: [unique, not_null]
+      - name: name
+        data_type: varchar
+        data_tests: [not_null]
+      - name: classification
+        data_type: varchar
+      - name: designation
+        data_type: varchar
+      - name: average_height_cm
+        data_type: integer
+      - name: skin_colors
+        data_type: varchar
+      - name: hair_colors
+        data_type: varchar
+      - name: eye_colors
+        data_type: varchar
+      - name: average_lifespan_years
+        data_type: integer
+        description: NULL when unknown or indefinite, see is_lifespan_indefinite.
+      - name: is_lifespan_indefinite
+        data_type: boolean
+      - name: language
+        data_type: varchar
+      - name: homeworld_planet_id
+        data_type: integer
+        description: NULL when the species has no homeworld (Droid). -1 when the homeworld is the placeholder planet.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_planets')
+                field: planet_id
+      - name: member_count
+        data_type: bigint
+        description: Characters of this species. For the unknown member, characters with no species.
+      - name: is_unknown_member
+        data_type: boolean
+        data_tests: [not_null]
+      - name: loaded_at
+        data_type: timestamp with time zone
+      - name: source_system
+        data_type: varchar
+
+  - name: dim_crafts
+    description: >
+      One row per starship or vehicle. Columns that only apply to starships
+      (hyperdrive_rating, mglt) are NULL for vehicles; filter on craft_type.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [craft_type, source_craft_id]
+    columns:
+      - name: craft_key
+        data_type: varchar
+        description: See the craft_key macro.
+        data_tests: [unique, not_null]
+      - name: craft_type
+        data_type: varchar
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [starship, vehicle]
+      - name: source_craft_id
+        data_type: integer
+        description: SWAPI ID within the starship or vehicle resource.
+        data_tests: [not_null]
+      - name: name
+        data_type: varchar
+      - name: model
+        data_type: varchar
+      - name: manufacturer
+        data_type: varchar
+        description: One text value, not split into companies.
+      - name: craft_class
+        data_type: varchar
+      - name: cost_credits
+        data_type: bigint
+        data_tests:
+          - positive_value
+      - name: length_m
+        data_type: double
+        data_tests:
+          - positive_value
+      - name: max_atmosphering_speed_kmh
+        data_type: integer
+      - name: crew_min
+        data_type: integer
+      - name: crew_max
+        data_type: integer
+      - name: passengers
+        data_type: integer
+      - name: cargo_capacity_kg
+        data_type: bigint
+      - name: consumables_days
+        data_type: double
+      - name: consumables_desc
+        data_type: varchar
+        description: Source consumables text, for values that cannot be turned into days.
+      - name: hyperdrive_rating
+        data_type: double
+      - name: mglt
+        data_type: integer
+      - name: pilot_count
+        data_type: bigint
+      - name: film_count
+        data_type: bigint
+      - name: loaded_at
+        data_type: timestamp with time zone
+      - name: source_system
+        data_type: varchar
+
+  - name: fct_film_appearances
+    description: >
+      Grain: one row per character per film. The species and homeworld keys are copied from
+      dim_characters. Species diversity from this table is the species of the named characters,
+      which differs from dim_films.species_count_listed.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [film_id, character_id]
+    columns:
+      - name: film_id
+        data_type: integer
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_films')
+                field: film_id
+      - name: character_id
+        data_type: integer
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_characters')
+                field: character_id
+      - name: species_id
+        data_type: integer
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_species')
+                field: species_id
+      - name: homeworld_planet_id
+        data_type: integer
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_planets')
+                field: planet_id
+      - name: film_release_date
+        data_type: date
+      - name: appearance_count
+        data_type: integer
+        description: Always 1. Sum it to count appearances.
+
+  - name: fct_craft_pilots
+    description: One row per pilot per craft.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [character_id, craft_key]
+    columns:
+      - name: character_id
+        data_type: integer
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_characters')
+                field: character_id
+      - name: craft_key
+        data_type: varchar
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_crafts')
+                field: craft_key
+      - name: craft_type
+        data_type: varchar
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [starship, vehicle]

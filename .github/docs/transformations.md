@@ -6,9 +6,9 @@ dbt project in [dbt_project/](../../dbt_project). Target design is in [data-mode
 
 | Layer | State |
 |---|---|
-| staging | **Partly done**: 6 models flatten `raw.<resource>.doc` into all source fields, typed where the source declares a type (ids, `episode_id`, `release_date`, `created`/`edited`, URL arrays). Value cleaning (data-model §4: `unknown`/`n/a` to NULL, number and unit parsing, renames with units) is not implemented, so those columns are still text with source names |
+| staging | Done: 6 models flatten `raw.<resource>.doc` and clean it per data-model §4 (missing markers to NULL, number and unit parsing, renames with units, category fixes, `species_id` and `homeworld_planet_id` extracted). The `*_urls` columns are kept for the bridges |
 | intermediate | Done: 5 bridge views (§7), row counts match the design (162 / 33 / 73 / 104 / 43) |
-| marts | Not started |
+| marts | Done: 5 dimensions and 2 facts as contract-enforced tables in schema `marts` (§6). Row counts: 162 appearances, 43 pilot rows, 60 planets (59 + unknown), 38 species (37 + unknown), 75 crafts |
 
 ## Running
 
@@ -25,7 +25,11 @@ cd dbt_project
 
 - **Schema names:** the `generate_schema_name` macro uses the custom schema as is (`staging`, `intermediate`), not `main_staging`.
 - **JSON raw:** staging reads `doc` with `->>` and the `json_array` macro. All six raw tables share one set of source column tests, written once with a YAML anchor in `sources.yml` (dbt does not allow `columns` on the source level).
-- **URL columns:** raw URL fields are renamed `*_url` (single) and `*_urls` (arrays), e.g. `homeworld_url`, `film_urls`. Marts will turn them into IDs.
+- **URL columns:** raw URL fields are renamed `*_url` (single) and `*_urls` (arrays), e.g. `homeworld_url`, `film_urls`. Staging also extracts `homeworld_planet_id` and `species_id` from them; the arrays stay for the bridges.
+- **Cleaning macros:** `clean_null` (trim, `unknown`/`n/a`/empty to NULL), `to_number` (comma removal, `try_cast`), `consumables_days`, `split_list`. `try_cast` can hide a value that fails to parse, so the generic test `no_silent_null` compares each cleaned number column with `raw` and fails if a real value became NULL.
+- **Source quirk, diameter 0:** 6 planets have `diameter = 0` (Polis Massa, Cato Neimoidia, Stewjon, Trandosha, Socorro and the placeholder). Staging keeps the 0 and its `positive_value` test only warns (expected: 6 warnings). `dim_planets` turns 0 into NULL.
+- **Marts:** tables with `contract: enforced`, so every column in `_marts.yml` needs a `data_type` that matches the SQL. Unknown members (`-1`) are added in `dim_planets` and `dim_species`. `dim_characters` maps a missing homeworld, the placeholder planet 28 and a missing species to `-1` by joining the dimensions, so a fact FK can never be NULL. `fct_film_appearances` copies those keys from `dim_characters` and reads the release date from `dim_films`, so it is built after both.
+- **Mart tests:** keys, `relationships` from facts to dimensions, one unknown member per dimension, row counts against staging (`tests/marts_row_counts_match_source.sql`) and the copied keys (`tests/fct_film_appearances_copied_keys_match.sql`).
 - **`craft_key`:** the `craft_key` macro (`md5(craft_type || '|' || id)`) is used in `stg_starships`, `stg_vehicles` and the two craft bridges, so the bridges can be tested against the staging models. The same macro will build `dim_crafts.craft_key`. Craft bridges also carry `craft_type` and `source_craft_id`.
 - **Craft relationships tests:** a bridge row refers to either `stg_starships` or `stg_vehicles`, so there is one `relationships` test per target, each limited with `config: where: "craft_type = ..."`.
 - **Bridges are not de-duplicated.** A duplicate in the source array should fail the `unique_combination_of_columns` test, not be hidden.
@@ -35,5 +39,5 @@ cd dbt_project
 
 ## Not yet done
 
-- Staging cleaning rules and tests (data-model §4, §8), `sources.yml` freshness and the snapshot-fallback warning.
-- Marts, contracts, sqlfluff config.
+- `sources.yml` freshness and the snapshot-fallback warning.
+- sqlfluff config.

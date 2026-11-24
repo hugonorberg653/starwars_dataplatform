@@ -1,9 +1,9 @@
 version: 2
 
-# Staging flattens raw.<resource>.doc into typed columns, 1:1 with the source.
-# Typing is limited to what the source declares (ids, integers, dates, timestamps, URL arrays).
-# Value cleaning (unknown/n/a to NULL, units, number parsing, see data-model.md section 4)
-# is not implemented yet, so those columns are still text.
+# Staging flattens raw.<resource>.doc into clean, typed columns, 1:1 with the source (same row count).
+# Cleaning rules are in .github/docs/data-model.md section 4. Missing markers (unknown, n/a, empty)
+# become NULL, numbers lose their commas and units, and column names carry their units.
+# The *_urls columns are kept for the intermediate bridges.
 models:
   - name: stg_films
     description: One row per film, flattened from raw.films.
@@ -14,6 +14,8 @@ models:
       - name: episode_id
         data_tests: [not_null]
       - name: release_date
+      - name: producers
+        description: Producer text split on commas.
       - name: character_urls
       - name: planet_urls
       - name: species_urls
@@ -28,9 +30,34 @@ models:
       - name: character_id
         description: Integer extracted from the people URL.
         data_tests: [unique, not_null]
+      - name: height_cm
+        data_tests:
+          - positive_value
+          - no_silent_null:
+              arguments: {key_column: character_id, source_table: people, raw_field: height}
+      - name: mass_kg
+        data_tests:
+          - positive_value
+          - no_silent_null:
+              arguments: {key_column: character_id, source_table: people, raw_field: mass}
+      - name: birth_year_bby
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: character_id, source_table: people, raw_field: birth_year}
+      - name: gender
+        description: NULL for n/a, none and unknown.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [male, female, hermaphrodite]
       - name: homeworld_url
+      - name: homeworld_planet_id
+      - name: species_id
+        description: The source lists 0 or 1 species per character. NULL when there is none.
       - name: film_urls
       - name: species_urls
+        data_tests:
+          - at_most_one_item
       - name: starship_urls
       - name: vehicle_urls
       - name: loaded_at
@@ -42,6 +69,38 @@ models:
       - name: planet_id
         description: Integer extracted from the planet URL.
         data_tests: [unique, not_null]
+      - name: is_placeholder
+        description: True for the record named `unknown` (planet 28). It is mapped to the unknown member in dim_planets.
+        data_tests: [not_null]
+      - name: rotation_period_hours
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: planet_id, source_table: planets, raw_field: rotation_period}
+      - name: orbital_period_days
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: planet_id, source_table: planets, raw_field: orbital_period}
+      - name: diameter_km
+        description: Faithful to the source, which uses 0 for an unknown diameter on 6 planets. dim_planets turns 0 into NULL.
+        data_tests:
+          - positive_value:
+              config:
+                severity: warn
+          - no_silent_null:
+              arguments: {key_column: planet_id, source_table: planets, raw_field: diameter}
+      - name: surface_water_pct
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: planet_id, source_table: planets, raw_field: surface_water}
+      - name: population
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: planet_id, source_table: planets, raw_field: population}
+      - name: gravity_g
+        description: First number in the gravity text. The original text is in gravity_desc.
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: planet_id, source_table: planets, raw_field: gravity}
       - name: resident_urls
       - name: film_urls
       - name: loaded_at
@@ -53,7 +112,17 @@ models:
       - name: species_id
         description: Integer extracted from the species URL.
         data_tests: [unique, not_null]
+      - name: average_height_cm
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: species_id, source_table: species, raw_field: average_height}
+      - name: average_lifespan_years
+        description: NULL when unknown or indefinite, see is_lifespan_indefinite.
+      - name: is_lifespan_indefinite
+        data_tests: [not_null]
       - name: homeworld_url
+      - name: homeworld_planet_id
+        description: NULL for species without a homeworld (Droid).
       - name: people_urls
       - name: film_urls
       - name: loaded_at
@@ -68,6 +137,46 @@ models:
       - name: starship_id
         description: Integer extracted from the starship URL.
         data_tests: [unique, not_null]
+      - name: cost_credits
+        data_tests:
+          - positive_value
+          - no_silent_null:
+              arguments: {key_column: starship_id, source_table: starships, raw_field: cost_in_credits}
+      - name: length_m
+        data_tests:
+          - positive_value
+          - no_silent_null:
+              arguments: {key_column: starship_id, source_table: starships, raw_field: length}
+      - name: max_atmosphering_speed_kmh
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: starship_id, source_table: starships, raw_field: max_atmosphering_speed}
+      - name: crew_min
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: starship_id, source_table: starships, raw_field: crew}
+      - name: crew_max
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: starship_id, source_table: starships, raw_field: crew}
+      - name: passengers
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: starship_id, source_table: starships, raw_field: passengers}
+      - name: cargo_capacity_kg
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: starship_id, source_table: starships, raw_field: cargo_capacity}
+      - name: consumables_days
+        description: NULL when the text is not a duration. The text is kept in consumables_desc.
+      - name: hyperdrive_rating
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: starship_id, source_table: starships, raw_field: hyperdrive_rating}
+      - name: mglt
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: starship_id, source_table: starships, raw_field: MGLT}
       - name: pilot_urls
       - name: film_urls
       - name: loaded_at
@@ -82,6 +191,38 @@ models:
       - name: vehicle_id
         description: Integer extracted from the vehicle URL.
         data_tests: [unique, not_null]
+      - name: cost_credits
+        data_tests:
+          - positive_value
+          - no_silent_null:
+              arguments: {key_column: vehicle_id, source_table: vehicles, raw_field: cost_in_credits}
+      - name: length_m
+        data_tests:
+          - positive_value
+          - no_silent_null:
+              arguments: {key_column: vehicle_id, source_table: vehicles, raw_field: length}
+      - name: max_atmosphering_speed_kmh
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: vehicle_id, source_table: vehicles, raw_field: max_atmosphering_speed}
+      - name: crew_min
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: vehicle_id, source_table: vehicles, raw_field: crew}
+      - name: crew_max
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: vehicle_id, source_table: vehicles, raw_field: crew}
+      - name: passengers
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: vehicle_id, source_table: vehicles, raw_field: passengers}
+      - name: cargo_capacity_kg
+        data_tests:
+          - no_silent_null:
+              arguments: {key_column: vehicle_id, source_table: vehicles, raw_field: cargo_capacity}
+      - name: consumables_days
+        description: NULL when the text is not a duration (for example Live food tanks). The text is kept in consumables_desc.
       - name: pilot_urls
       - name: film_urls
       - name: loaded_at

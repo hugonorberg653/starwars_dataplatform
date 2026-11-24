@@ -25,5 +25,33 @@ with source as (
 
 select
     {{ craft_key("'vehicle'", 'vehicle_id') }} as craft_key,
-    *
+    vehicle_id,
+    trim(name) as name,
+    {{ clean_null('model') }} as model,
+    {{ clean_null('manufacturer') }} as manufacturer,
+    {{ to_number('cost_in_credits', 'bigint') }} as cost_credits,
+    {{ to_number('length', 'double') }} as length_m,
+    {{ to_number("regexp_replace(max_atmosphering_speed, '(?i)km$', '')", 'integer') }} as max_atmosphering_speed_kmh,
+    {{ to_number("split_part(crew, '-', 1)", 'integer') }} as crew_min,
+    coalesce(
+        {{ to_number("split_part(crew, '-', 2)", 'integer') }},
+        {{ to_number("split_part(crew, '-', 1)", 'integer') }}
+    ) as crew_max,
+    {{ to_number('passengers', 'integer') }} as passengers,
+    case
+        when lower(trim(cargo_capacity)) = 'none' then 0
+        else {{ to_number('cargo_capacity', 'bigint') }}
+    end as cargo_capacity_kg,
+    {{ consumables_days('consumables') }} as consumables_days,
+    {{ clean_null('consumables') }} as consumables_desc,
+    case
+        when lower(trim(vehicle_class)) = 'air speeder' then 'airspeeder'
+        else lower({{ clean_null('vehicle_class') }})
+    end as craft_class,
+    pilot_urls,
+    film_urls,
+    source_created_at,
+    source_edited_at,
+    loaded_at,
+    source_system
 from source
