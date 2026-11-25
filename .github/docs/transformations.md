@@ -35,12 +35,12 @@ cd dbt_project
 - **Bridges are not de-duplicated.** A duplicate in the source array should fail the `unique_combination_of_columns` test, not be hidden.
 - **Two-way match tests** (`tests/int_*_two_way_match.sql`) compare each bridge with the inverse side (e.g. `films.characters` vs `people.films`) using `except` in both directions. Any row returned is a failure. They need the inverse `*_urls` arrays in staging.
 - **Other two-way matches:** `tests/species_people_two_way_match.sql` (`people.species` vs `species.people`) and `tests/planet_residents_two_way_match.sql` (`people.homeworld` vs `planets.residents`). The dimension counts `member_count` and `resident_count` rely on the first side only.
-- **Reconciliation and plausibility tests:** `tests/marts_counts_reconcile.sql` checks that dimension counts (`resident_count`, `member_count`, `pilot_count`, `film_count`, ...) add up to the facts and bridges. `tests/crafts_numbers_are_coherent.sql` checks `crew_min <= crew_max` and that consumables text with a number is not turned into NULL days. `tests/raw_sources_uniform.sql` fails if the raw tables do not share one `_source` (API and snapshot mixed). `value_between` (generic) bounds height, mass, BMI and surface water.
+- **Reconciliation and plausibility tests:** `tests/marts_counts_reconcile.sql` checks that dimension counts (`resident_count`, `member_count`, `pilot_count`, `film_count`, ...) add up to the facts and bridges. `tests/crafts_numbers_are_coherent.sql` checks `crew_min <= crew_max` and that consumables text with a number is not turned into NULL days. `tests/raw_sources_uniform.sql` fails if the raw tables do not share one `_source` (base URL). `value_between` (generic) bounds height, mass, BMI and surface water.
 - **dbt unit tests** (`models/*/_unit_tests.yml`) run the cleaning and mart logic on hand-written rows with known SWAPI quirks (`47,060`, `30-165`, `1000km`, `ABY`, `indefinite`, `Galatic Basic`, the BMI guard, release order).
 - **`unique_combination_of_columns`** is a small own generic test in `tests/generic/`, to avoid adding `dbt_utils` for one test.
 - Generic test arguments are written under `arguments:` (the form dbt 1.10+ expects).
 
 ## Not yet done
 
-- `sources.yml` freshness and the snapshot-fallback warning.
+- `sources.yml` freshness.
 - sqlfluff config.

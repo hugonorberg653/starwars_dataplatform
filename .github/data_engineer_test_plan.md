@@ -28,7 +28,7 @@ dbt Cloud stays a talking point, but the solution doesn't depend on it.
 - **Messy in ways worth discussing:** `"unknown"`, `"n/a"`, numbers with commas like `"1,000"`, and heights and costs stored as strings.
 - **Risk:** `swapi.dev` is sometimes down or has certificate problems.
   - Make the base URL configurable (`swapi.info` and `swapi.tech` are mirrors).
-  - Commit a raw JSON snapshot as a fallback, so the pipeline still runs if the API is down during the review.
+  - The pipeline always ingests from the API (no snapshot fallback); a failed fetch fails the run and keeps the previous raw tables.
 
 PokeAPI is richer for analysis but more nested and heavier to ingest. Within 4–8 hours, SWAPI gives a cleaner finished result.
 
@@ -90,7 +90,6 @@ Answer a few specific questions rather than making a generic dashboard. For exam
 ├── dbt_project/        # models/{staging,intermediate,marts}, tests, profiles.yml
 ├── orchestration/      # dagster definitions
 ├── dashboard/          # streamlit app or evidence project
-├── data/snapshot/      # fallback raw JSON
 ├── docker-compose.yml, Dockerfile, Makefile
 ├── .github/workflows/ci.yml   # optional: dbt build + sqlfluff on push
 └── README.md           # how to run, assumptions, design decisions, findings, next steps
@@ -122,7 +121,7 @@ Answer a few specific questions rather than making a generic dashboard. For exam
 ## Next steps
 
 - [ ] Set up the repo structure
-- [ ] Write the ingestion script and commit the raw JSON snapshot
+- [ ] Write the ingestion script
 - [ ] Build the dbt staging, intermediate and marts models with tests and docs
 - [ ] Build the dashboard and write up the findings
 - [ ] Add Docker and the single-command run

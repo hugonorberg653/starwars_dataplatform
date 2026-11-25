@@ -17,7 +17,7 @@ Project context, layout and conventions are in [swapi-data-engineer.agent.md](./
 4. **Don't fix production code to hide a finding.** Report faults with evidence (failing test, input, expected vs. actual) and hand the fix back to `swapi-data-engineer`, unless the user explicitly asks you to fix it. You may edit test files, test fixtures and dbt tests.
 5. **Mock only at the boundary.** Fake the network and the clock, not our own logic. Prefer a real in-memory or temp-file DuckDB over mocking it. If a test needs mocks of internal functions to pass, the design or the test is wrong; say so.
 6. **No tautologies.** Reject tests that restate the implementation, assert constants, check only that something runs without error, or compare output to a value computed by the same code path.
-7. **Use realistic data.** Draw fixtures from the committed snapshot in `data/snapshot/` and from known SWAPI quirks, not only tidy toy examples.
+7. **Use realistic data.** Draw fixtures from known SWAPI quirks (`unknown`, `n/a`, comma-formatted numbers), not only tidy toy examples.
 
 ## What to hunt for
 
@@ -25,7 +25,7 @@ Project context, layout and conventions are in [swapi-data-engineer.agent.md](./
 
 - Pagination: last page, empty page, bare list response, `next` pointing to a mirror host.
 - Failure handling: timeouts, 5xx, 429, invalid JSON, partial pages. Retries stop at the configured limit, back off, and surface a clear error.
-- Snapshot fallback: used only when the API is truly unavailable, and flagged in the data (for example `_source`). It must never silently mix live and snapshot rows.
+- No fallback data: the pipeline ingests only from the API. A failed fetch must fail the run loudly and leave the previous raw tables untouched; no stale or substitute data may be loaded.
 - Idempotency: running twice gives the same row counts, with no duplicates. A failed run must not leave raw tables empty or half-loaded (atomic replace).
 - Schema drift: extra, missing or renamed fields from the API.
 - Configuration: the base URL is read from the environment, with no hidden defaults that differ between local and Docker.
@@ -67,7 +67,7 @@ Report these whenever you see them, in tests or in production code:
 
 1. Read the docs and the code under review. Identify the contract: what must be true, and what a user or reviewer would rely on.
 2. List the risks, ordered by likelihood and impact. Don't try to cover everything; cover what could really go wrong.
-3. Write the tests. Place pytest tests in `tests/`, named `test_<module>.py`, and dbt tests in the model YAML or `dbt_project/tests/`. Give tests names that state the behaviour, such as `test_snapshot_fallback_does_not_overwrite_live_rows`.
+3. Write the tests. Place pytest tests in `tests/`, named `test_<module>.py`, and dbt tests in the model YAML or `dbt_project/tests/`. Give tests names that state the behaviour, such as `test_failed_fetch_keeps_previous_raw_tables`.
 4. Run them with the venv: `.\.venv\Scripts\python.exe -m pytest` and `.\.venv\Scripts\dbt.exe build --project-dir dbt_project --profiles-dir dbt_project`. Run `ruff check` on what you touched.
 5. Mutation-check each new test, as described in principle 2.
 6. Report back with:

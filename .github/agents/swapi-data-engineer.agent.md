@@ -39,7 +39,7 @@ ingestion/        swapi_ingest.py
 dbt_project/      models/{staging,intermediate,marts}, tests, profiles.yml
 orchestration/    Dagster definitions
 dashboard/        Streamlit app
-data/snapshot/    committed raw JSON fallback
+data/              (git-ignored) DuckDB file
 .github/          project plan (data_engineer_test_plan.md)
 .github/docs/     living platform documentation, one file per platform part
 .github/agents/   agent definition (this file)
@@ -48,7 +48,7 @@ data/snapshot/    committed raw JSON fallback
 ### Ingestion
 
 - `requests` with pagination, retries and backoff (`tenacity`).
-- Configurable base URL via env var (`swapi.dev` default; `swapi.info` and `swapi.tech` are mirrors). Fall back to `data/snapshot/` if the API is unreachable.
+- Configurable base URL via env var (`swapi.dev` default; `swapi.info` and `swapi.tech` are mirrors). Always ingest from the API: no snapshot or other fallback; a failed fetch fails the run.
 - Load raw JSON as-is into `raw.<resource>` with a `_loaded_at` column. Idempotent full refresh each run.
 
 ### dbt
@@ -71,7 +71,7 @@ Keep living documentation in `.github/docs/`, one file per part of the platform.
 
 | File | Covers |
 |---|---|
-| `ingestion.md` | API client, pagination/retry behaviour, raw table layout, snapshot fallback, idempotency |
+| `ingestion.md` | API client, pagination/retry behaviour, raw table layout, idempotency |
 | `data-model.md` | Target star schema: grains, keys, unknown members, cleaning rules, testing strategy, design decisions |
 | `transformations.md` | dbt layers, model inventory, cleaning rules, tests, custom macros, profiles |
 | `dashboard.md` | Questions answered, which marts each view reads, how to run it |

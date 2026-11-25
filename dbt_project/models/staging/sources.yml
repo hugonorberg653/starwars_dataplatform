@@ -16,7 +16,7 @@ sources:
           - name: _loaded_at
             description: Timestamp of the ingestion run.
           - name: _source
-            description: Base URL of the API, or `snapshot` for the committed fallback.
+            description: Base URL of the API the run loaded from.
       - name: people
         columns: *raw_columns
       - name: planets

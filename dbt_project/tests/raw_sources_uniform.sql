@@ -1,5 +1,6 @@
--- Ingestion falls back to the snapshot per resource. If the API fails halfway, some raw tables come from
--- the API and others from the snapshot, and the marts would join the two. Returns a row when the raw
+-- Ingestion loads all raw tables in one run from one base URL. This guards against raw tables that were
+-- loaded from different sources (for example after a manual load or a changed SWAPI_BASE_URL), which the
+-- marts would then join. Returns a row when the raw
 -- tables do not all share exactly one _source.
 with sources as (
 

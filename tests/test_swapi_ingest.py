@@ -1,5 +1,3 @@
-import json
-
 import duckdb
 import pytest
 import requests
@@ -62,30 +60,45 @@ def test_fetch_wraps_failures_after_retries():
     assert Failing.calls == 4
 
 
-def _snapshot(tmp_path, n=2):
-    snap = tmp_path / "snap"
-    snap.mkdir()
-    for resource in si.RESOURCES:
-        records = [{"name": f"{resource}{i}", "url": f"u/{i}/", "films": [f"f/{i}/"]} for i in range(n)]
-        (snap / f"{resource}.json").write_text(json.dumps(records))
-    return snap
+def _fake_fetch(n=2):
+    return lambda base, resource, *_, **__: [
+        {"name": f"{resource}{i}", "url": f"u/{i}/", "films": [f"f/{i}/"]} for i in range(n)
+    ]
 
 
-def test_ingest_falls_back_to_snapshot_and_is_idempotent(tmp_path, monkeypatch):
-    def unavailable(*_, **__):
-        raise si.SwapiUnavailableError("down")
-
-    monkeypatch.setattr(si, "fetch_resource", unavailable)
-    db, snap = tmp_path / "t.duckdb", _snapshot(tmp_path)
+def test_ingest_loads_from_api_and_is_idempotent(tmp_path, monkeypatch):
+    monkeypatch.setattr(si, "fetch_resource", _fake_fetch())
+    db = tmp_path / "t.duckdb"
 
     for _ in range(2):
-        counts = si.ingest(db_path=db, snapshot_dir=snap)
+        counts = si.ingest(base_url="https://x/api", db_path=db)
         assert counts == {r: 2 for r in si.RESOURCES}
 
     with duckdb.connect(str(db)) as con:
         assert con.execute("select count(*) from raw.people").fetchone() == (2,)
-        assert con.execute("select distinct _source from raw.people").fetchall() == [("snapshot",)]
+        assert con.execute("select distinct _source from raw.people").fetchall() == [("https://x/api",)]
         assert con.execute("select typeof(doc) from raw.people limit 1").fetchone() == ("JSON",)
+        assert con.execute("select doc ->> 'name' from raw.people order by 1").fetchall() == [
+            ("people0",),
+            ("people1",),
+        ]
+
+
+def test_ingest_failure_keeps_previous_raw_tables(tmp_path, monkeypatch):
+    db = tmp_path / "t.duckdb"
+    monkeypatch.setattr(si, "fetch_resource", _fake_fetch())
+    si.ingest(db_path=db)
+
+    def fail_on_last(base, resource, *_, **__):
+        if resource == si.RESOURCES[-1]:
+            raise si.SwapiUnavailableError("down")
+        return [{"name": "new"}]
+
+    monkeypatch.setattr(si, "fetch_resource", fail_on_last)
+    with pytest.raises(si.SwapiUnavailableError):
+        si.ingest(db_path=db)
+
+    with duckdb.connect(str(db)) as con:
         assert con.execute("select doc ->> 'name' from raw.people order by 1").fetchall() == [
             ("people0",),
             ("people1",),
@@ -101,11 +114,6 @@ def test_load_keeps_unexpected_fields_and_types(tmp_path):
             ("172",),
             ("unknown",),
         ]
-        assert con.execute("select doc -> 'new_field' ->> 'x' from raw.people where doc ->> 'name' = 'a'").fetchone() == ("1",)
-
-
-def test_ingest_writes_snapshot_when_requested(tmp_path, monkeypatch):
-    monkeypatch.setattr(si, "fetch_resource", lambda *_, **__: [{"name": "a", "films": []}])
-    snap = tmp_path / "snap"
-    si.ingest(db_path=tmp_path / "t.duckdb", snapshot_dir=snap, update_snapshot=True)
-    assert json.loads((snap / "films.json").read_text()) == [{"name": "a", "films": []}]
+        assert con.execute(
+            "select doc -> 'new_field' ->> 'x' from raw.people where doc ->> 'name' = 'a'"
+        ).fetchone() == ("1",)

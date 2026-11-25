@@ -168,7 +168,7 @@ They are thin views. The film-to-planet and film-to-craft bridges currently feed
 
 | Level | Tests |
 |---|---|
-| Sources | `doc` not_null. `freshness` on `_loaded_at`. A test that **warns** when `_source = 'snapshot'`, so a fallback load is visible. Uniqueness of the record `url` is tested on the staging primary keys |
+| Sources | `doc` not_null. `freshness` on `_loaded_at`. Uniqueness of the record `url` is tested on the staging primary keys |
 | Staging | PK unique + not_null. `accepted_values` (gender, craft_type, trilogy). Generic `positive_value` test (height, mass, length, diameter). **Parse-completeness** test: a raw value that is not a missing marker but parses to NULL fails, so a `try_cast` cannot drop data unnoticed. `len(people.species) <= 1` |
 | Intermediate | Unique together on both keys. `relationships` to staging. **Two-way match** singular tests: each bridge equals its inverse (e.g. `films.characters` vs `people.films`), which catches API drift where one side is updated |
 | Marts | PK unique + not_null. Every fact FK has `relationships` to its dimension and is never NULL. Row counts match raw (e.g. `fct_film_appearances` = `sum(len(films.characters))`). Exactly one unknown member per dimension. Copied FKs in facts match `dim_characters`. Model contracts (`contract: enforced: true`) fix the column names and types the dashboard depends on |
