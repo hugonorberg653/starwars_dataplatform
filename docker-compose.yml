@@ -1,0 +1,58 @@
+# docker compose up                          ingest + dbt build, then the dashboard on :8501
+# docker compose --profile orchestrator up   additionally the Dagster UI and schedule on :3000
+
+x-app: &app
+  build: .
+  image: swapi-platform
+  environment:
+    SWAPI_BASE_URL: ${SWAPI_BASE_URL:-https://swapi.dev/api}
+    SWAPI_VERIFY_SSL: ${SWAPI_VERIFY_SSL:-true}
+
+services:
+  pipeline:
+    <<: *app
+    # Runs through Dagster so the run, asset checks and lineage are recorded in DAGSTER_HOME.
+    volumes:
+      - warehouse:/data
+      - dagster_home:/dagster_home
+    restart: "no"
+
+  dashboard:
+    <<: *app
+    command:
+      - streamlit
+      - run
+      - dashboard/app.py
+      - --server.address=0.0.0.0
+      - --server.port=8501
+      - --server.headless=true
+      - --browser.gatherUsageStats=false
+    ports:
+      - "8501:8501"
+    volumes:
+      - warehouse:/data:ro
+    depends_on:
+      pipeline:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dagster:
+    <<: *app
+    profiles: ["orchestrator"]
+    command: ["dagster", "dev", "--host", "0.0.0.0", "--port", "3000", "-m", "orchestration.definitions"]
+    ports:
+      - "3000:3000"
+    volumes:
+      - warehouse:/data
+      - dagster_home:/dagster_home
+    depends_on:
+      pipeline:
+        condition: service_completed_successfully
+
+volumes:
+  warehouse:
+  dagster_home:

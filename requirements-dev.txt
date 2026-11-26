@@ -1,0 +1,7 @@
+-r requirements.txt
+
+# Dev tooling (not installed in the Docker image)
+sqlfluff==4.5.0
+sqlfluff-templater-dbt==4.5.0
+ruff==0.17.6
+pytest==9.2.0

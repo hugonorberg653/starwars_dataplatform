@@ -15,9 +15,3 @@ plotly==7.1.0
 dagster==1.13.31
 dagster-webserver==1.13.31
 dagster-dbt==0.29.31
-
-# Dev tooling
-sqlfluff==4.5.0
-sqlfluff-templater-dbt==4.5.0
-ruff==0.17.6
-pytest==9.2.0

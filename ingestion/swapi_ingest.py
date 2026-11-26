@@ -133,15 +133,20 @@ def ingest(
     return counts
 
 
-def main() -> None:
-    argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter).parse_args()
-
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    ingest(
+def ingest_from_env() -> dict[str, int]:
+    """Run ``ingest`` configured by SWAPI_BASE_URL, DUCKDB_PATH and SWAPI_VERIFY_SSL."""
+    return ingest(
         base_url=os.getenv("SWAPI_BASE_URL", DEFAULT_BASE_URL),
         db_path=Path(os.getenv("DUCKDB_PATH", DEFAULT_DB_PATH)),
         verify_ssl=os.getenv("SWAPI_VERIFY_SSL", "true").lower() != "false",
     )
+
+
+def main() -> None:
+    argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter).parse_args()
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    ingest_from_env()
 
 
 if __name__ == "__main__":

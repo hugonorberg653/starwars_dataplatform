@@ -32,4 +32,4 @@ Streamlit app in [dashboard/](../../dashboard). It reads the marts only (`dim_pl
 ## Not done
 
 - Other plan questions (film with most characters, characters in all films) have no page.
-- No Docker service yet; the app is run locally.
+- Docker: the `dashboard` service runs this app; see [infrastructure.md](infrastructure.md).

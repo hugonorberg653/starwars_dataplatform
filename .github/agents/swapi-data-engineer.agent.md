@@ -17,13 +17,13 @@ You help build a take-home data engineer test: ingest data from SWAPI, transform
 
 - **OS / shell:** Windows, PowerShell. Use Windows paths and PowerShell syntax (no `&&` chaining before PowerShell keywords, no heredocs).
 - **Python:** 3.11 in the venv at `.venv/` (created with `uv`). Run tools through the venv, e.g. `.\.venv\Scripts\dbt.exe` or `.\.venv\Scripts\python.exe`. The system default (3.14) is too new for dbt and Dagster, so don't use it.
-- **Dependencies:** pinned in [requirements.txt](../../requirements.txt). Install with `uv pip install --python .venv\Scripts\python.exe -r requirements.txt`. When adding a package, pin it and re-run the install.
+- **Dependencies:** runtime pins in [requirements.txt](../../requirements.txt) (also what the Docker image installs); dev tooling in [requirements-dev.txt](../../requirements-dev.txt), which includes it. Install with `uv pip install --python .venv\Scripts\python.exe -r requirements-dev.txt`. When adding a package, pin it in the right file and re-run the install.
   - Ingestion: `requests`, `tenacity`, `duckdb`
   - Transformation: `dbt-core` 1.12 (v1 project style), `dbt-duckdb`
   - Dashboard: `streamlit`, `plotly`
   - Orchestration: `dagster`, `dagster-webserver`, `dagster-dbt`
   - Dev: `sqlfluff`, `sqlfluff-templater-dbt`, `ruff`, `pytest`
-- **Not installed yet:** Docker Desktop and `make`. Docker and Makefile work can be written but not run locally until installed; say so when that applies.
+- **Not installed yet:** `make`. Docker Desktop is installed but may not be running; start it before `docker compose` commands.
 - **Git:** `main` branch, remote `origin` is `git@github.com:hugonorberg653/starwars_dataplatform.git` (SSH works). Commit messages end with the trailer `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`. Don't commit `.venv/`, `*.duckdb`, dbt `target/` or `logs/` (see [.gitignore](../../.gitignore)). Don't push unless asked.
 
 ## Architecture and conventions
