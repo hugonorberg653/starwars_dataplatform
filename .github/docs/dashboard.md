@@ -1,6 +1,6 @@
 # Dashboard
 
-Streamlit app in [dashboard/](../../dashboard). It reads the marts only (`rpt_planet_residents`, `dim_characters`, `dim_crafts`) through a read-only DuckDB connection, and answers the three findings questions from the plan. Cleaning stays in dbt; the pages select, filter and plot, plus small display statistics (a ratio, a median, a rank correlation).
+Streamlit app in [dashboard/](../../dashboard). It reads the marts and reporting schemas only (`reporting.rpt_planet_residents`, `dim_characters`, `dim_crafts`) through a read-only DuckDB connection, and answers the three findings questions from the plan. Cleaning stays in dbt; the pages select, filter and plot, plus small display statistics (a ratio, a median, a rank correlation).
 
 ## Running
 

@@ -13,7 +13,7 @@ planets = query(
         population,
         resident_count,
         resident_count * 1e6 / population as characters_per_million
-    from marts.rpt_planet_residents
+    from reporting.rpt_planet_residents
     where not is_unknown_member
       and population > 0
     """
@@ -24,7 +24,7 @@ excluded = query(
         count(*) filter (where population is null) as unknown_population,
         count(*) filter (where population = 0) as zero_population,
         sum(resident_count) filter (where is_unknown_member) as unknown_homeworld
-    from marts.rpt_planet_residents
+    from reporting.rpt_planet_residents
     """
 ).iloc[0]
 

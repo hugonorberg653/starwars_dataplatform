@@ -47,9 +47,9 @@ Checked against the `swapi.dev` load (people 82, planets 60, films 6, species 37
 | sources | `raw` | tables (ingestion) | n/a | Declared in `sources.yml`. Each table is `(doc JSON, _loaded_at, _source)`: the whole record in one JSON column. Freshness is checked on `_loaded_at` |
 | staging | `staging` | view | one source | Rename, cast, missing markers → NULL, parse units, extract IDs. Same row count as the source |
 | marts | `marts` | table, contract enforced | staging | Dimensions (attributes only) and keys-only facts. The facts unnest the `*_urls` arrays. Never reads another mart |
-| reporting | `marts` (folder `models/reporting`) | table, contract enforced | marts + staging | `rpt_*` aggregates over facts and dimensions. The dashboard reads these and the dimensions |
+| reporting | `reporting` (folder `models/reporting`) | table, contract enforced | marts + staging | `rpt_*` aggregates over facts and dimensions. The dashboard reads these and the dimensions |
 
-Override `generate_schema_name` so the schemas are named exactly `staging`/`marts` rather than `main_staging`. Marts are tables so the dashboard does not re-run view logic, and so a dashboard holding a read lock does not get in the way of `dbt build`.
+Override `generate_schema_name` so the schemas are named exactly `staging`/`marts`/`reporting` rather than `main_staging`. Marts are tables so the dashboard does not re-run view logic, and so a dashboard holding a read lock does not get in the way of `dbt build`.
 
 ## 4. Staging rules
 

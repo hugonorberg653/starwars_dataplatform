@@ -20,7 +20,7 @@ models:
       +contract:
         enforced: true
     reporting:
-      +schema: marts
+      +schema: reporting
       +materialized: table
       +contract:
         enforced: true
