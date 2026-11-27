@@ -1,6 +1,6 @@
 # SWAPI data platform
 
-Ingests the Star Wars API (SWAPI) into DuckDB, models it with **dbt** into a star schema, orchestrates it with **Dagster**, and answers three questions in a **Streamlit** dashboard. Everything runs with one Docker command.
+Ingests the Star Wars API (SWAPI) into DuckDB, models it with **dbt** into a star schema, orchestrates it with **Dagster**, and answers four questions in a **Streamlit** dashboard. Everything runs with one Docker command.
 
 ```
 SWAPI ──► Python ingest ──► DuckDB raw ──► dbt (staging → marts) ──► Streamlit
@@ -78,9 +78,9 @@ Run dbt from the venv (`.venv\Scripts\dbt.exe`), not from a global install: a gl
 2. **dbt** ([dbt_project/](dbt_project)) holds all business logic:
    - `staging`: flattens the JSON, casts types and turns `unknown`/`n/a` into NULL. It also strips commas from numbers, parses units and ranges, fixes known typos and extracts IDs from URLs.
    - `marts`: five dimensions and five keys-only facts (one per many-to-many relationship, unnested straight from staging), contract-enforced tables with an unknown member (`-1`) so fact keys are never NULL. Dimensions hold attributes only. A separate `reporting` layer (`models/reporting`, `rpt_*`, schema `reporting`) holds the counts and flags that aggregate the facts.
-   - 19 models in total. There is no intermediate layer: the unnest models were identical to the facts, so they were merged into them.
+   - 21 models in total. There is no intermediate layer: the unnest models were identical to the facts, so they were merged into them.
 3. **Dagster** ([orchestration/](orchestration)) models ingestion as one multi-asset (`raw/*`) and every dbt model as an asset, so lineage runs from raw to marts. dbt tests become asset checks. The job `swapi_full_refresh` runs one step at a time, and a daily schedule runs it at 06:00.
-4. **Dashboard** ([dashboard/](dashboard)) reads the marts only, through a read-only DuckDB connection.
+4. **Dashboard** ([dashboard/](dashboard)) reads the marts and reporting models only, through a read-only DuckDB connection.
 5. **Docker** uses one image for three services: `pipeline` (one-shot Dagster run), `dashboard` (waits for `pipeline` to succeed) and `dagster` (UI, optional). Data lives in named volumes.
 
 ### Testing
@@ -88,7 +88,7 @@ Run dbt from the venv (`.venv\Scripts\dbt.exe`), not from a global install: a gl
 - **dbt:** keys (`unique`, `not_null`), `relationships` from facts to dimensions, `accepted_values`, and custom generic tests (`positive_value`, `value_between`, `no_silent_null`, `unique_combination_of_columns`).
   - Singular tests include two-way match tests (each fact against the inverse side of the API data), count reconciliation, and a check that raw tables share one source.
   - dbt unit tests run the cleaning logic on hand-written rows with known SWAPI quirks.
-  - A full `dbt build` ends with `PASS=203 WARN=1 ERROR=0` (models and tests together; the warning is expected, see Data quirks).
+  - A full `dbt build` has one expected warning (see Data quirks).
 - **Python:** `pytest` covers ingestion (no network), the dashboard pages (skipped without a database) and the Dagster asset graph.
 
 ## Findings
@@ -98,6 +98,7 @@ Details and caveats are in [dashboard.md](.github/docs/dashboard.md).
 - **Homeworld density** (characters per million inhabitants): dominated by small planets such as Dathomir, so the page has a minimum-characters filter. Absolute counts (Naboo, Tatooine) rank differently, and both views are shown.
 - **BMI by species:** the *unknown* species holds most characters (including Luke and Leia, whom SWAPI lists without a species; the model does not guess Human). Jabba's BMI (about 443) is real data, so the chart caps the axis and names him instead of dropping him. Most species have one character, so comparisons are anecdotes.
 - **Starship cost vs speed:** the rank correlation between speed and cost is negative (about -0.4 for hyperdrive, stronger for MGLT). Size is the likely confounder, since capital ships and the Death Star are expensive and slow. Only 26 of 36 starships have both values, so this is indicative only.
+- **Starship pilots:** 15 of 36 starships have recorded pilots; Obi-Wan is linked to five ships, while the Millennium Falcon and X-wing each have four pilots. SWAPI records pilots, not captains, and an empty list is not proof that a ship was never piloted.
 
 ## Design decisions
 

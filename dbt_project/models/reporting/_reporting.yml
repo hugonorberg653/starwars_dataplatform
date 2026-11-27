@@ -61,3 +61,54 @@ models:
       - name: craft_count
         data_type: bigint
         description: Starships and vehicles listed in the film.
+
+  - name: rpt_starship_pilots
+    description: One row per starship, including ships with no recorded pilots.
+    columns:
+      - name: craft_key
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: name
+        data_type: varchar
+        data_tests: [not_null]
+      - name: craft_class
+        data_type: varchar
+        data_tests: [not_null]
+      - name: cost_credits
+        data_type: bigint
+      - name: length_m
+        data_type: double
+      - name: crew_max
+        data_type: integer
+      - name: pilot_count
+        data_type: bigint
+        data_tests: [not_null]
+      - name: pilot_names
+        data_type: varchar
+        description: Alphabetical names of recorded pilots; NULL when none are recorded.
+
+  - name: rpt_starship_pilot_counts
+    description: One row per pilot and starship class, plus an all-classes total per pilot.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [character_id, craft_class, all_classes]
+    columns:
+      - name: character_id
+        data_type: integer
+        data_tests: [not_null]
+      - name: name
+        data_type: varchar
+        data_tests: [not_null]
+      - name: craft_class
+        data_type: varchar
+        description: NULL on the all-classes total; missing source classes are labelled Unknown.
+      - name: all_classes
+        data_type: boolean
+        data_tests: [not_null]
+      - name: starship_count
+        data_type: bigint
+        data_tests: [not_null]
+      - name: starship_names
+        data_type: varchar
+        data_tests: [not_null]

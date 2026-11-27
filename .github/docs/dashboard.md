@@ -1,6 +1,6 @@
 # Dashboard
 
-Streamlit app in [dashboard/](../../dashboard). It reads the marts and reporting schemas only (`reporting.rpt_planet_residents`, `dim_characters`, `dim_crafts`) through a read-only DuckDB connection, and answers the three findings questions from the plan. Cleaning stays in dbt; the pages select, filter and plot, plus small display statistics (a ratio, a median, a rank correlation).
+Streamlit app in [dashboard/](../../dashboard). It reads the marts and reporting schemas through a read-only DuckDB connection, and answers the three findings questions from the plan plus a starship-pilots question. Cleaning stays in dbt; the pages select, filter and plot, plus small display statistics (a ratio, a median, a rank correlation).
 
 ## Running
 
@@ -22,10 +22,12 @@ Streamlit app in [dashboard/](../../dashboard). It reads the marts and reporting
 | Homeworld density | `rpt_planet_residents` | Density = `resident_count * 1e6 / population` (characters per million inhabitants). Unknown member, NULL population and population 0 are excluded. A minimum-characters slider is needed because one character on a tiny planet (Dathomir) otherwise tops the ranking |
 | BMI by species | `dim_characters` (`species_name` is denormalised there) | The unknown species is kept and labelled instead of dropped, because it holds most characters (including Luke and Leia; SWAPI lists no species for them and the model does not guess Human). Axis capped at BMI 100 by default: Jabba (≈ 443) stays in the data and metrics and is named under the chart. Medians only for species with 2+ characters |
 | Starship cost vs speed | `dim_crafts where craft_type = 'starship'` | Hyperdrive rating is inverted (`1 / rating`) so that faster is to the right. Alternative speed measure: MGLT, known for fewer ships. Ships with no cost or no speed are left out, not set to 0. Correlation is Pearson on ranks (Spearman) to avoid a scipy dependency |
+| Starship pilots | `rpt_starship_pilots`, `rpt_starship_pilot_counts` | Rank ships by recorded pilots and pilots by ships, with a class breakdown. The class filter applies to both rankings and the table of ships with no recorded pilots. Missing classes are labelled Unknown; missing costs, lengths and crew sizes stay NULL |
 
 ## Findings and caveats
 
 - Starships: the rank correlation between speed and cost is negative (about -0.4 for hyperdrive, stronger for MGLT). Size is the likely confounder: capital ships and the Death Star are expensive and slow. 26 of 36 starships have both cost and hyperdrive rating, so this is indicative only.
+- Starship pilots: 15 of 36 ships have recorded pilots. Obi-Wan is linked to five ships; the Millennium Falcon and X-wing each have four pilots. These are source links, not evidence of ownership, captaincy, simultaneous flight or frequency. A ship with no recorded pilot is not necessarily unpiloted.
 - Species groups are mostly 1 character; per-species BMI comparisons are anecdotes.
 - Density is dominated by small-population planets; absolute counts (Naboo, Tatooine) rank differently. Both views are on the page.
 

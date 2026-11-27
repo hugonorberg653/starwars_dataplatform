@@ -42,3 +42,49 @@ unit_tests:
         - {planet_id: 1, resident_count: 2}
         - {planet_id: 2, resident_count: 0}
         - {planet_id: -1, resident_count: 1}
+
+  - name: starship_pilots_counts_ships_with_and_without_pilots
+    model: rpt_starship_pilots
+    given:
+      - input: ref('dim_crafts')
+        rows:
+          - {craft_key: ship1, craft_type: starship, name: Shared, craft_class: fighter}
+          - {craft_key: ship2, craft_type: starship, name: Unrecorded, craft_class: null}
+          - {craft_key: vehicle1, craft_type: vehicle, name: Vehicle, craft_class: speeder}
+      - input: ref('dim_characters')
+        rows:
+          - {character_id: 1, name: Zoe}
+          - {character_id: 2, name: Ada}
+      - input: ref('fct_craft_pilots')
+        rows:
+          - {craft_key: ship1, character_id: 1}
+          - {craft_key: ship1, character_id: 2}
+          - {craft_key: vehicle1, character_id: 1}
+    expect:
+      rows:
+        - {craft_key: ship1, craft_class: fighter, pilot_count: 2, pilot_names: "Ada, Zoe"}
+        - {craft_key: ship2, craft_class: Unknown, pilot_count: 0, pilot_names: null}
+
+  - name: starship_pilot_counts_include_class_and_all_class_totals
+    model: rpt_starship_pilot_counts
+    given:
+      - input: ref('dim_crafts')
+        rows:
+          - {craft_key: ship1, craft_type: starship, name: Alpha, craft_class: fighter}
+          - {craft_key: ship2, craft_type: starship, name: Beta, craft_class: fighter}
+          - {craft_key: ship3, craft_type: starship, name: Gamma, craft_class: null}
+          - {craft_key: vehicle1, craft_type: vehicle, name: Vehicle, craft_class: speeder}
+      - input: ref('dim_characters')
+        rows:
+          - {character_id: 1, name: Pilot}
+      - input: ref('fct_craft_pilots')
+        rows:
+          - {craft_key: ship1, character_id: 1}
+          - {craft_key: ship2, character_id: 1}
+          - {craft_key: ship3, character_id: 1}
+          - {craft_key: vehicle1, character_id: 1}
+    expect:
+      rows:
+        - {character_id: 1, craft_class: fighter, all_classes: false, starship_count: 2, starship_names: "Alpha, Beta"}
+        - {character_id: 1, craft_class: Unknown, all_classes: false, starship_count: 1, starship_names: Gamma}
+        - {character_id: 1, craft_class: null, all_classes: true, starship_count: 3, starship_names: "Alpha, Beta, Gamma"}

@@ -7,7 +7,7 @@ dbt project in [dbt_project/](../../dbt_project). Target design is in [data-mode
 | Layer | State |
 |---|---|
 | staging | Done: 6 models flatten `raw.<resource>.doc` and clean it per data-model §4 (missing markers to NULL, number and unit parsing, renames with units, category fixes, `species_id` and `homeworld_planet_id` extracted). The `*_urls` columns are kept for the facts to unnest |
-| marts, reporting | Done: 5 dimensions and 5 keys-only facts as contract-enforced tables in schema `marts`, and 3 reporting models in schema `reporting` (§6). Row counts: 162 appearances, 33 film-planets, 73 film-species, 104 film-crafts, 43 pilot rows, 60 planets (59 + unknown), 38 species (37 + unknown), 75 crafts |
+| marts, reporting | Done: 5 dimensions and 5 keys-only facts as contract-enforced tables in schema `marts`, and 5 reporting models in schema `reporting` (§6). Row counts: 162 appearances, 33 film-planets, 73 film-species, 104 film-crafts, 43 pilot rows, 60 planets (59 + unknown), 38 species (37 + unknown), 75 crafts |
 
 ## Running
 
@@ -32,6 +32,7 @@ cd dbt_project
 - **`craft_key`:** the `craft_key` macro (`md5(craft_type || '|' || id)`) is used in `stg_starships`, `stg_vehicles`, `fct_film_crafts` and `fct_craft_pilots`, so the facts can be tested against the staging models. The same macro builds `dim_crafts.craft_key`. The facts hold only `craft_key`; the type is on `dim_crafts`.
 - **Craft relationships tests:** a craft fact row points to one `dim_crafts` row through `craft_key`, so one plain `relationships` test is enough (the old bridges needed one test per staging table, limited by `craft_type`).
 - **Facts are not de-duplicated.** A duplicate in the source array should fail the `unique_combination_of_columns` test, not be hidden.
+- **Starship pilot reports:** `rpt_starship_pilots` retains every starship, even with no recorded pilot; `rpt_starship_pilot_counts` uses grouping sets for each pilot's class counts and all-class total. This lets the dashboard filter by class without recomputing business counts. Missing classes are labelled `Unknown`; neither report interprets pilot links as captaincy.
 - **Two-way match tests** (`tests/fct_*_two_way_match.sql`) compare each fact with the inverse side (e.g. `films.characters` vs `people.films`) using `except` in both directions. Any row returned is a failure. They need the inverse `*_urls` arrays in staging.
 - **Other two-way matches:** `tests/species_people_two_way_match.sql` (`people.species` vs `species.people`) and `tests/planet_residents_two_way_match.sql` (`people.homeworld` vs `planets.residents`). The marts use the first side only (`dim_characters.species_id`, `rpt_planet_residents.resident_count`).
 - **Reconciliation and plausibility tests:** `tests/reporting_counts_reconcile.sql` checks that the totals in the `rpt_*` models add up to the facts and to the source arrays on the films. `tests/crafts_numbers_are_coherent.sql` checks `crew_min <= crew_max` and that consumables text with a number is not turned into NULL days. `tests/raw_sources_uniform.sql` fails if the raw tables do not share one `_source` (base URL). `value_between` (generic) bounds height, mass, BMI and surface water.

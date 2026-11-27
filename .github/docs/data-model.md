@@ -165,8 +165,10 @@ Starships and vehicles are combined because they share 10 attributes (the starsh
 | `rpt_planet_residents` | planet + unknown member | `population`, `resident_count` (characters with this homeworld) |
 | `rpt_character_film_summary` | character | `film_count`, `is_in_all_films` |
 | `rpt_film_summary` | film | `character_count`, `planet_count`, `species_count_listed`, `craft_count` |
+| `rpt_starship_pilots` | starship | recorded pilot count and names, including ships with no links |
+| `rpt_starship_pilot_counts` | pilot and starship class, plus pilot total | ship count and names for each class and across all classes |
 
-These replace the count columns that used to sit in the dimensions. Per-species, per-craft and per-planet film counts were dropped because no question used them; they are one `group by` on the facts if needed.
+Counts stay out of dimensions. Per-species, per-craft and per-planet film counts were dropped because no question used them; they are one `group by` on the facts if needed. Pilot relationships do not identify captains; an empty pilot list is not evidence that no one piloted the ship.
 
 ### Film species: listed vs observed
 
@@ -186,17 +188,17 @@ SWAPI states each relationship on both sides. Each fact is unnested from one can
 | Sources | `doc` not_null. `freshness` on `_loaded_at`. Uniqueness of the record `url` is tested on the staging primary keys |
 | Staging | PK unique + not_null. `accepted_values` (gender, craft_type, trilogy). Generic `positive_value` test (height, mass, length, diameter). **Parse-completeness** test: a raw value that is not a missing marker but parses to NULL fails, so a `try_cast` cannot drop data unnoticed. `len(people.species) <= 1` |
 | Marts | PK unique + not_null. Every fact is unique on its two keys, and every fact FK has `relationships` to its dimension and is never NULL. **Two-way match** singular tests: each fact equals its inverse (e.g. `films.characters` vs `people.films`), which catches API drift where one side is updated. Row counts match raw (e.g. `fct_film_appearances` = `sum(len(films.characters))`). Exactly one unknown member per dimension. Model contracts (`contract: enforced: true`) fix the column names and types the dashboard depends on. Unit tests cover BMI, the unknown members, the placeholder planet and the starship/vehicle key |
-| Reporting | PK unique + not_null. A singular test reconciles every total with an independent source (residents = characters, film counts = the arrays on the films). A unit test covers `is_in_all_films` |
+| Reporting | Keys are tested for uniqueness and required fields for non-NULL values. A singular test reconciles totals with source facts or arrays; unit tests cover film flags and the starship pilot reports, including unrecorded pilots and class totals |
 
 ## 9. Model inventory
 
-19 models: 6 staging, 10 core marts (5 dimensions, 5 facts), 3 reporting. That is above the plan's 12–15. The 6 staging models are required (one per source), combining starships and vehicles already saves 3 models, and dropping the intermediate layer saves 5 more. The 3 film facts that feed only `rpt_film_summary` can be dropped if time runs short, at the cost of the integrity tests and film counts they feed.
+21 models: 6 staging, 10 core marts (5 dimensions, 5 facts), 5 reporting. That is above the plan's 12–15. The 6 staging models are required (one per source), combining starships and vehicles already saves 3 models, and dropping the intermediate layer saves 5 more. The 3 film facts that feed only `rpt_film_summary` can be dropped if time runs short, at the cost of the integrity tests and film counts they feed.
 
 | Layer | Models |
 |---|---|
 | staging | `stg_films`, `stg_people`, `stg_planets`, `stg_species`, `stg_starships`, `stg_vehicles` |
 | marts | `dim_films`, `dim_characters`, `dim_planets`, `dim_species`, `dim_crafts`, `fct_film_appearances`, `fct_film_planets`, `fct_film_species`, `fct_film_crafts`, `fct_craft_pilots` |
-| reporting | `rpt_planet_residents`, `rpt_character_film_summary`, `rpt_film_summary` |
+| reporting | `rpt_planet_residents`, `rpt_character_film_summary`, `rpt_film_summary`, `rpt_starship_pilots`, `rpt_starship_pilot_counts` |
 | macros | `extract_id`, `clean_null`, `to_number`, `resolve_planet_id`, `craft_key`, `generate_schema_name` |
 
 ## 10. Questions → marts
@@ -207,6 +209,7 @@ SWAPI states each relationship on both sides. Each fact is unnested from one can
 | Home planets with the most characters relative to population | `rpt_planet_residents` (`resident_count`, `population`) | Exclude the unknown member and NULL population |
 | BMI by species | `dim_characters` (`species_name`, `bmi`) | Jabba (BMI ≈ 443) is a real value, not an error. Flag it, don't drop it |
 | Starship cost vs hyperdrive rating | `dim_crafts where craft_type = 'starship'` | 10 of 36 starships have an unknown cost |
+| Starship pilots and classes | `rpt_starship_pilots`, `rpt_starship_pilot_counts` | Pilot links do not establish captaincy; unrecorded pilots are not proof of absence |
 | Characters in all films | `rpt_character_film_summary.is_in_all_films` | C-3PO, R2-D2, Obi-Wan Kenobi |
 
 ## 11. Production evolution

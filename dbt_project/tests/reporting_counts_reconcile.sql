@@ -38,6 +38,36 @@ with checks as (
         (select sum(craft_count) from {{ ref('rpt_film_summary') }}),
         (select sum(len(starship_urls) + len(vehicle_urls)) from {{ ref('stg_films') }})
 
+    union all
+    select
+        'rpt_starship_pilots rows = starships',
+        (select count(*) from {{ ref('rpt_starship_pilots') }}),
+        (select count(*) from {{ ref('dim_crafts') }} where craft_type = 'starship')
+
+    union all
+    select
+        'rpt_starship_pilots.pilot_count = starship pilot links',
+        (select coalesce(sum(pilot_count), 0) from {{ ref('rpt_starship_pilots') }}),
+        (select count(*) from {{ ref('fct_craft_pilots') }} as p
+            inner join {{ ref('dim_crafts') }} as c on p.craft_key = c.craft_key
+            where c.craft_type = 'starship')
+
+    union all
+    select
+        'rpt_starship_pilot_counts.starship_count = starship pilot links',
+        (select coalesce(sum(starship_count), 0) from {{ ref('rpt_starship_pilot_counts') }} where all_classes),
+        (select count(*) from {{ ref('fct_craft_pilots') }} as p
+            inner join {{ ref('dim_crafts') }} as c on p.craft_key = c.craft_key
+            where c.craft_type = 'starship')
+
+    union all
+    select
+        'rpt_starship_pilot_counts class totals = starship pilot links',
+        (select coalesce(sum(starship_count), 0) from {{ ref('rpt_starship_pilot_counts') }} where not all_classes),
+        (select count(*) from {{ ref('fct_craft_pilots') }} as p
+            inner join {{ ref('dim_crafts') }} as c on p.craft_key = c.craft_key
+            where c.craft_type = 'starship')
+
 )
 
 select *
