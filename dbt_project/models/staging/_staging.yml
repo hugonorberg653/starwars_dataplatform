@@ -3,7 +3,7 @@ version: 2
 # Staging flattens raw.<resource>.doc into clean, typed columns, 1:1 with the source (same row count).
 # Cleaning rules are in .github/docs/data-model.md section 4. Missing markers (unknown, n/a, empty)
 # become NULL, numbers lose their commas and units, and column names carry their units.
-# The *_urls columns are kept for the intermediate bridges.
+# The *_urls columns are kept for the facts, which unnest them.
 models:
   - name: stg_films
     description: One row per film, flattened from raw.films.

@@ -1,7 +1,7 @@
 -- films.species must equal the inverse side species.films. Returns rows present on one side only.
 with canonical as (
 
-    select film_id, species_id from {{ ref('int_film_species') }}
+    select film_id, species_id from {{ ref('fct_film_species') }}
 
 ),
 

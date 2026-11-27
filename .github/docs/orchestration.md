@@ -7,7 +7,7 @@ Code: [orchestration/](../../orchestration). One code location, `orchestration.d
 - `raw_swapi` is **one multi-asset** (`raw/people`, `raw/films`, …). Ingestion fetches every resource and loads them in a single transaction, so the assets cannot be materialized separately (`can_subset=False`).
 - `swapi_dbt_assets` is every dbt model, loaded from `dbt_project/target/manifest.json`. It runs `dbt build`, so dbt tests appear as Dagster asset checks.
 - Lineage raw → staging needs no hand-written dependencies: the raw asset keys (`["raw", <resource>]`) equal the default dagster-dbt key of the dbt source `raw.<resource>`. [tests/test_orchestration.py](../../tests/test_orchestration.py) guards this.
-- Asset groups: `raw`, then the dbt layer (`staging`, `intermediate`, `marts`), set in `SwapiDbtTranslator`.
+- Asset groups: `raw`, then the dbt layer (`staging`, `marts`), set in `SwapiDbtTranslator`.
 - Job `swapi_full_refresh` materializes everything. Schedule `daily_refresh` runs it at 06:00, on by default.
 - The dashboard is deliberately not an asset: it only reads the marts.
 

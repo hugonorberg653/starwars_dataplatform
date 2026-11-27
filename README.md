@@ -3,7 +3,7 @@
 Ingests the Star Wars API (SWAPI) into DuckDB, models it with **dbt** into a star schema, orchestrates it with **Dagster**, and answers three questions in a **Streamlit** dashboard. Everything runs with one Docker command.
 
 ```
-SWAPI ──► Python ingest ──► DuckDB raw ──► dbt (staging → intermediate → marts) ──► Streamlit
+SWAPI ──► Python ingest ──► DuckDB raw ──► dbt (staging → marts) ──► Streamlit
               └──────────── orchestrated by Dagster, packaged in Docker ───────────┘
 ```
 
@@ -77,9 +77,8 @@ Run dbt from the venv (`.venv\Scripts\dbt.exe`), not from a global install: a gl
 1. **Ingestion** ([ingestion/](ingestion)) fetches six resources (people, planets, films, species, vehicles, starships) with pagination, retries and backoff. Each record is stored as delivered in one JSON column of `raw.<resource>`, plus `_loaded_at` and `_source`. Every resource is fetched before anything is written, and the load is one transaction. A failed fetch fails the run and leaves the previous raw tables untouched; there is no fallback data.
 2. **dbt** ([dbt_project/](dbt_project)) holds all business logic:
    - `staging`: flattens the JSON, casts types and turns `unknown`/`n/a` into NULL. It also strips commas from numbers, parses units and ranges, fixes known typos and extracts IDs from URLs.
-   - `intermediate`: unnests the URL arrays into bridge tables.
-   - `marts`: five dimensions and two facts, contract-enforced tables with an unknown member (`-1`) so fact keys are never NULL.
-   - 18 models in total.
+   - `marts`: five dimensions and five keys-only facts (one per many-to-many relationship, unnested straight from staging), contract-enforced tables with an unknown member (`-1`) so fact keys are never NULL. Dimensions hold attributes only. A separate `reporting` layer (`models/reporting`, `rpt_*`, same `marts` schema) holds the counts and flags that aggregate the facts.
+   - 19 models in total. There is no intermediate layer: the unnest models were identical to the facts, so they were merged into them.
 3. **Dagster** ([orchestration/](orchestration)) models ingestion as one multi-asset (`raw/*`) and every dbt model as an asset, so lineage runs from raw to marts. dbt tests become asset checks. The job `swapi_full_refresh` runs one step at a time, and a daily schedule runs it at 06:00.
 4. **Dashboard** ([dashboard/](dashboard)) reads the marts only, through a read-only DuckDB connection.
 5. **Docker** uses one image for three services: `pipeline` (one-shot Dagster run), `dashboard` (waits for `pipeline` to succeed) and `dagster` (UI, optional). Data lives in named volumes.
@@ -87,7 +86,7 @@ Run dbt from the venv (`.venv\Scripts\dbt.exe`), not from a global install: a gl
 ### Testing
 
 - **dbt:** keys (`unique`, `not_null`), `relationships` from facts to dimensions, `accepted_values`, and custom generic tests (`positive_value`, `value_between`, `no_silent_null`, `unique_combination_of_columns`).
-  - Singular tests include two-way match tests (each bridge against the inverse side of the API data), count reconciliation, and a check that raw tables share one source.
+  - Singular tests include two-way match tests (each fact against the inverse side of the API data), count reconciliation, and a check that raw tables share one source.
   - dbt unit tests run the cleaning logic on hand-written rows with known SWAPI quirks.
   - A full `dbt build` ends with `PASS=203 WARN=1 ERROR=0` (models and tests together; the warning is expected, see Data quirks).
 - **Python:** `pytest` covers ingestion (no network), the dashboard pages (skipped without a database) and the Dagster asset graph.
@@ -109,7 +108,7 @@ Details and caveats are in [dashboard.md](.github/docs/dashboard.md).
 | Raw as a JSON document | New, renamed or retyped API fields cannot break the load. Drift shows up in dbt as NULLs or failed casts and tests. | Inferred columns, which can silently change raw types. |
 | Full refresh | SWAPI is tiny and static, with no reliable change marker, and full refresh is idempotent. | Incremental loads keyed on `edited`. |
 | No fallback data | A failed run is loud instead of silently serving stale data. | A committed snapshot. |
-| Starships + vehicles in one `dim_crafts` | They share most attributes and play the same role. The key includes `craft_type` so it doesn't rely on the IDs staying disjoint. | Two dimensions and two bridge facts. |
+| Starships + vehicles in one `dim_crafts` | They share most attributes and play the same role. The key includes `craft_type` so it doesn't rely on the IDs staying disjoint. | Two dimensions and two craft facts. |
 | Business logic in dbt only | The dashboard selects, filters and plots. | Calculations in Streamlit. |
 | One image for all services | One dependency set and no version drift. | Separate images per service. |
 | Dashboard doesn't start if the pipeline fails | It never shows half-built data. | Start anyway with the previous data. |
@@ -147,7 +146,7 @@ More detail per area is in [.github/docs/](.github/docs): [ingestion](.github/do
 
 ```
 ingestion/        API client and raw load
-dbt_project/      models (staging, intermediate, marts), macros, tests, profiles.yml
+dbt_project/      models (staging, marts), macros, tests, profiles.yml
 orchestration/    Dagster assets, job and schedule
 dashboard/        Streamlit app (pages in views/)
 tests/            pytest: ingestion, dashboard, orchestration

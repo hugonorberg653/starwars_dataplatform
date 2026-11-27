@@ -1,5 +1,5 @@
--- people.species must equal the inverse side species.people. dim_species.member_count is built from
--- people.species only, so a disagreement means the counts are wrong. Returns rows present on one side only.
+-- people.species must equal the inverse side species.people. dim_characters.species_id is built from
+-- people.species only, so a disagreement means the species of characters is wrong. Returns rows present on one side only.
 with canonical as (
 
     select character_id, species_id from {{ ref('stg_people') }} where species_id is not null

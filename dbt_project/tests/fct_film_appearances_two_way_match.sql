@@ -1,7 +1,7 @@
 -- films.characters must equal the inverse side people.films. Returns rows present on one side only.
 with canonical as (
 
-    select film_id, character_id from {{ ref('int_film_characters') }}
+    select film_id, character_id from {{ ref('fct_film_appearances') }}
 
 ),
 

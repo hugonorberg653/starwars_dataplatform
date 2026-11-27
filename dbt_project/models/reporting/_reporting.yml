@@ -1,0 +1,63 @@
+version: 2
+
+# Reporting models hold the aggregates (counts, flags over many rows). They are derived from the facts and
+# dimensions, so a count exists in exactly one place and dimensions stay descriptive.
+models:
+  - name: rpt_planet_residents
+    description: One row per planet, including the unknown member (-1), with the number of characters whose homeworld it is.
+    columns:
+      - name: planet_id
+        data_type: integer
+        data_tests: [unique, not_null]
+      - name: name
+        data_type: varchar
+        data_tests: [not_null]
+      - name: population
+        data_type: bigint
+      - name: is_unknown_member
+        data_type: boolean
+        data_tests: [not_null]
+      - name: resident_count
+        data_type: bigint
+        description: Characters whose homeworld is this planet. For the unknown member, characters with no usable homeworld.
+        data_tests: [not_null]
+
+  - name: rpt_character_film_summary
+    description: One row per character with the number of films they appear in.
+    columns:
+      - name: character_id
+        data_type: integer
+        data_tests: [unique, not_null]
+      - name: name
+        data_type: varchar
+        data_tests: [not_null]
+      - name: film_count
+        data_type: bigint
+        data_tests: [not_null]
+      - name: is_in_all_films
+        data_type: boolean
+        data_tests: [not_null]
+
+  - name: rpt_film_summary
+    description: One row per film with the number of characters, planets, species and crafts.
+    columns:
+      - name: film_id
+        data_type: integer
+        data_tests: [unique, not_null]
+      - name: title
+        data_type: varchar
+        data_tests: [not_null]
+      - name: character_count
+        data_type: bigint
+        description: Characters listed in the film (films.characters), counted from fct_film_appearances.
+      - name: planet_count
+        data_type: bigint
+        description: Planets listed in the film (films.planets).
+      - name: species_count_listed
+        data_type: bigint
+        description: >
+          Species the source lists for the film (films.species). Not the same as the species
+          of the film's characters, see fct_film_appearances.
+      - name: craft_count
+        data_type: bigint
+        description: Starships and vehicles listed in the film.

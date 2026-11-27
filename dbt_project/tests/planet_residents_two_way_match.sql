@@ -1,4 +1,4 @@
--- people.homeworld must equal the inverse side planets.residents. dim_planets.resident_count is built from
+-- people.homeworld must equal the inverse side planets.residents. rpt_planet_residents.resident_count is built from
 -- people.homeworld only, so a disagreement means the counts are wrong. Returns rows present on one side only.
 with canonical as (
 

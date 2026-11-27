@@ -4,31 +4,9 @@ with characters as (
 
 ),
 
-planets as (
-
-    select planet_id from {{ ref('dim_planets') }}
-
-),
-
 species as (
 
     select species_id, name from {{ ref('stg_species') }}
-
-),
-
-film_counts as (
-
-    select
-        character_id,
-        count(*) as film_count
-    from {{ ref('int_film_characters') }}
-    group by 1
-
-),
-
-total_films as (
-
-    select count(*) as film_total from {{ ref('stg_films') }}
 
 )
 
@@ -47,15 +25,11 @@ select
     c.hair_color,
     c.skin_color,
     c.eye_color,
-    coalesce(p.planet_id, -1) as homeworld_planet_id,
+    {{ resolve_planet_id('c.homeworld_planet_id') }} as homeworld_planet_id,
     coalesce(c.species_id, -1) as species_id,
+    coalesce(s.name, 'Unknown') as species_name,
     coalesce(s.name = 'Droid', false) as is_droid,
-    coalesce(fc.film_count, 0) as film_count,
-    coalesce(fc.film_count, 0) = t.film_total as is_in_all_films,
     c.loaded_at,
     c.source_system
 from characters as c
-left join planets as p on c.homeworld_planet_id = p.planet_id
 left join species as s on c.species_id = s.species_id
-left join film_counts as fc on c.character_id = fc.character_id
-cross join total_films as t

@@ -1,12 +1,8 @@
--- Grain: one row per character per film. Species and homeworld keys are copied from
--- dim_characters so that species-per-film questions need no join through the character.
+-- Grain: one row per character per film. Keys only: species, homeworld and release date come from the
+-- dimensions. Unnested from films.characters; the opposite side (people.films) is checked by
+-- tests/fct_film_appearances_two_way_match.sql.
 select
-    b.film_id,
-    b.character_id,
-    c.species_id,
-    c.homeworld_planet_id,
-    f.release_date as film_release_date,
-    1 as appearance_count
-from {{ ref('int_film_characters') }} as b
-inner join {{ ref('dim_characters') }} as c on b.character_id = c.character_id
-inner join {{ ref('dim_films') }} as f on b.film_id = f.film_id
+    f.film_id,
+    {{ extract_id('u.character_url') }} as character_id
+from {{ ref('stg_films') }} as f
+cross join unnest(f.character_urls) as u(character_url)

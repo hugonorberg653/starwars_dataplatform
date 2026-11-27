@@ -4,6 +4,12 @@ with expected as (
 
     select 'fct_film_appearances' as model, sum(len(character_urls)) as expected_rows from {{ ref('stg_films') }}
     union all
+    select 'fct_film_planets', sum(len(planet_urls)) from {{ ref('stg_films') }}
+    union all
+    select 'fct_film_species', sum(len(species_urls)) from {{ ref('stg_films') }}
+    union all
+    select 'fct_film_crafts', sum(len(starship_urls) + len(vehicle_urls)) from {{ ref('stg_films') }}
+    union all
     select 'fct_craft_pilots', sum(len(starship_urls) + len(vehicle_urls)) from {{ ref('stg_people') }}
     union all
     select 'dim_characters', count(*) from {{ ref('stg_people') }}
@@ -22,6 +28,12 @@ with expected as (
 actual as (
 
     select 'fct_film_appearances' as model, count(*) as actual_rows from {{ ref('fct_film_appearances') }}
+    union all
+    select 'fct_film_planets', count(*) from {{ ref('fct_film_planets') }}
+    union all
+    select 'fct_film_species', count(*) from {{ ref('fct_film_species') }}
+    union all
+    select 'fct_film_crafts', count(*) from {{ ref('fct_film_crafts') }}
     union all
     select 'fct_craft_pilots', count(*) from {{ ref('fct_craft_pilots') }}
     union all

@@ -10,13 +10,12 @@ characters = query(
     """
     select
         c.name,
-        case when s.is_unknown_member then 'Unknown (no species in source)' else s.name end as species,
+        case when c.species_id = -1 then 'Unknown (no species in source)' else c.species_name end as species,
         c.is_droid,
         c.height_cm,
         c.mass_kg,
         c.bmi
     from marts.dim_characters as c
-    inner join marts.dim_species as s on c.species_id = s.species_id
     """
 )
 total = len(characters)

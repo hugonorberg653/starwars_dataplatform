@@ -27,4 +27,5 @@ def test_dbt_tests_are_asset_checks(graph):
 
 def test_models_are_grouped_by_layer(graph):
     groups = {graph.get(key).group_name for key in graph.get_all_asset_keys()}
-    assert {"raw", "staging", "intermediate", "marts"} <= groups
+    assert {"raw", "staging", "marts"} <= groups
+    assert "intermediate" not in groups

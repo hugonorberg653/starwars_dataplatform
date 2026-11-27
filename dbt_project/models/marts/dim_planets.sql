@@ -5,49 +5,25 @@ with planets as (
 
 ),
 
-residents as (
-
-    select
-        homeworld_planet_id as planet_id,
-        count(*) as resident_count
-    from {{ ref('stg_people') }}
-    group by 1
-
-),
-
-films as (
-
-    select
-        planet_id,
-        count(*) as film_count
-    from {{ ref('int_film_planets') }}
-    group by 1
-
-),
-
 known as (
 
     select
-        p.planet_id,
-        p.name,
-        p.rotation_period_hours,
-        p.orbital_period_days,
+        planet_id,
+        name,
+        rotation_period_hours,
+        orbital_period_days,
         -- The source uses 0 for an unknown diameter (6 planets), which is not a real size.
-        nullif(p.diameter_km, 0) as diameter_km,
-        p.gravity_g,
-        p.gravity_desc,
-        p.surface_water_pct,
-        p.population,
-        p.climates,
-        p.terrains,
-        coalesce(r.resident_count, 0) as resident_count,
-        coalesce(f.film_count, 0) as film_count,
+        nullif(diameter_km, 0) as diameter_km,
+        gravity_g,
+        gravity_desc,
+        surface_water_pct,
+        population,
+        climates,
+        terrains,
         false as is_unknown_member,
-        p.loaded_at,
-        p.source_system
-    from planets as p
-    left join residents as r on p.planet_id = r.planet_id
-    left join films as f on p.planet_id = f.planet_id
+        loaded_at,
+        source_system
+    from planets
 
 ),
 
@@ -66,13 +42,6 @@ unknown_member as (
         cast(null as bigint) as population,
         cast(null as varchar[]) as climates,
         cast(null as varchar[]) as terrains,
-        (
-            select count(*)
-            from {{ ref('stg_people') }} as p
-            left join planets as pl on p.homeworld_planet_id = pl.planet_id
-            where pl.planet_id is null
-        ) as resident_count,
-        0 as film_count,
         true as is_unknown_member,
         cast(null as timestamptz) as loaded_at,
         cast(null as varchar) as source_system

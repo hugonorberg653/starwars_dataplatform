@@ -2,7 +2,7 @@
 -- Returns rows present on one side only.
 with canonical as (
 
-    select film_id, craft_key from {{ ref('int_film_crafts') }}
+    select film_id, craft_key from {{ ref('fct_film_crafts') }}
 
 ),
 

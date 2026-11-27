@@ -36,7 +36,7 @@ def raw_swapi(context: AssetExecutionContext):
 
 class SwapiDbtTranslator(DagsterDbtTranslator):
     def get_group_name(self, dbt_resource_props: Mapping[str, Any]) -> str | None:
-        # fqn is [project, layer, ..., model]; group by layer (staging, intermediate, marts).
+        # fqn is [project, layer, ..., model]; group by layer (staging, marts).
         fqn = dbt_resource_props.get("fqn", [])
         return fqn[1] if len(fqn) > 2 else super().get_group_name(dbt_resource_props)
 

@@ -1,6 +1,6 @@
 # Dashboard
 
-Streamlit app in [dashboard/](../../dashboard). It reads the marts only (`dim_planets`, `dim_characters`, `dim_species`, `dim_crafts`) through a read-only DuckDB connection, and answers the three findings questions from the plan. Cleaning stays in dbt; the pages select, filter and plot, plus small display statistics (a ratio, a median, a rank correlation).
+Streamlit app in [dashboard/](../../dashboard). It reads the marts only (`rpt_planet_residents`, `dim_characters`, `dim_crafts`) through a read-only DuckDB connection, and answers the three findings questions from the plan. Cleaning stays in dbt; the pages select, filter and plot, plus small display statistics (a ratio, a median, a rank correlation).
 
 ## Running
 
@@ -19,8 +19,8 @@ Streamlit app in [dashboard/](../../dashboard). It reads the marts only (`dim_pl
 
 | Page | Reads | Decisions |
 |---|---|---|
-| Homeworld density | `dim_planets` | Density = `resident_count * 1e6 / population` (characters per million inhabitants). Unknown member, NULL population and population 0 are excluded. A minimum-characters slider is needed because one character on a tiny planet (Dathomir) otherwise tops the ranking |
-| BMI by species | `dim_characters` + `dim_species` | The unknown species is kept and labelled instead of dropped, because it holds most characters (including Luke and Leia; SWAPI lists no species for them and the model does not guess Human). Axis capped at BMI 100 by default: Jabba (≈ 443) stays in the data and metrics and is named under the chart. Medians only for species with 2+ characters |
+| Homeworld density | `rpt_planet_residents` | Density = `resident_count * 1e6 / population` (characters per million inhabitants). Unknown member, NULL population and population 0 are excluded. A minimum-characters slider is needed because one character on a tiny planet (Dathomir) otherwise tops the ranking |
+| BMI by species | `dim_characters` (`species_name` is denormalised there) | The unknown species is kept and labelled instead of dropped, because it holds most characters (including Luke and Leia; SWAPI lists no species for them and the model does not guess Human). Axis capped at BMI 100 by default: Jabba (≈ 443) stays in the data and metrics and is named under the chart. Medians only for species with 2+ characters |
 | Starship cost vs speed | `dim_crafts where craft_type = 'starship'` | Hyperdrive rating is inverted (`1 / rating`) so that faster is to the right. Alternative speed measure: MGLT, known for fewer ships. Ships with no cost or no speed are left out, not set to 0. Correlation is Pearson on ranks (Spearman) to avoid a scipy dependency |
 
 ## Findings and caveats

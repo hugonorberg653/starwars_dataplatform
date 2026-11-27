@@ -1,7 +1,7 @@
 version: 2
 
 unit_tests:
-  - name: dim_characters_bmi_unknown_members_and_film_flags
+  - name: dim_characters_bmi_and_unknown_members
     model: dim_characters
     given:
       - input: ref('stg_people')
@@ -10,29 +10,55 @@ unit_tests:
           - {character_id: 2, name: NoMass, height_cm: 150, mass_kg: null, homeworld_planet_id: 1, species_id: 2}
           - {character_id: 3, name: ZeroHeight, height_cm: 0, mass_kg: 50.0, homeworld_planet_id: 28, species_id: null}
           - {character_id: 4, name: NoHomeworld, height_cm: null, mass_kg: 50.0, homeworld_planet_id: null, species_id: null}
-      - input: ref('dim_planets')
+      - input: ref('stg_planets')
         rows:
-          - {planet_id: 1}
-          - {planet_id: -1}
+          - {planet_id: 1, is_placeholder: false}
+          - {planet_id: 28, is_placeholder: true}
       - input: ref('stg_species')
         rows:
           - {species_id: 1, name: Human}
           - {species_id: 2, name: Droid}
-      - input: ref('int_film_characters')
-        rows:
-          - {film_id: 1, character_id: 1}
-          - {film_id: 2, character_id: 1}
-          - {film_id: 1, character_id: 2}
-      - input: ref('stg_films')
-        rows:
-          - {film_id: 1}
-          - {film_id: 2}
     expect:
       rows:
-        - {character_id: 1, bmi: 20.0, homeworld_planet_id: 1, species_id: 1, is_droid: false, film_count: 2, is_in_all_films: true}
-        - {character_id: 2, bmi: null, homeworld_planet_id: 1, species_id: 2, is_droid: true, film_count: 1, is_in_all_films: false}
-        - {character_id: 3, bmi: null, homeworld_planet_id: -1, species_id: -1, is_droid: false, film_count: 0, is_in_all_films: false}
-        - {character_id: 4, bmi: null, homeworld_planet_id: -1, species_id: -1, is_droid: false, film_count: 0, is_in_all_films: false}
+        - {character_id: 1, bmi: 20.0, homeworld_planet_id: 1, species_id: 1, species_name: Human, is_droid: false}
+        - {character_id: 2, bmi: null, homeworld_planet_id: 1, species_id: 2, species_name: Droid, is_droid: true}
+        - {character_id: 3, bmi: null, homeworld_planet_id: -1, species_id: -1, species_name: Unknown, is_droid: false}
+        - {character_id: 4, bmi: null, homeworld_planet_id: -1, species_id: -1, species_name: Unknown, is_droid: false}
+
+  - name: dim_species_keeps_missing_homeworld_and_maps_placeholder_to_unknown
+    model: dim_species
+    given:
+      - input: ref('stg_species')
+        rows:
+          - {species_id: 1, name: Human, homeworld_planet_id: 1, is_lifespan_indefinite: false}
+          - {species_id: 2, name: Droid, homeworld_planet_id: null, is_lifespan_indefinite: true}
+          - {species_id: 3, name: Mystery, homeworld_planet_id: 28, is_lifespan_indefinite: false}
+      - input: ref('stg_planets')
+        rows:
+          - {planet_id: 1, is_placeholder: false}
+          - {planet_id: 28, is_placeholder: true}
+    expect:
+      rows:
+        - {species_id: 1, homeworld_planet_id: 1, is_unknown_member: false, is_lifespan_indefinite: false}
+        - {species_id: 2, homeworld_planet_id: null, is_unknown_member: false, is_lifespan_indefinite: true}
+        - {species_id: 3, homeworld_planet_id: -1, is_unknown_member: false, is_lifespan_indefinite: false}
+        - {species_id: -1, homeworld_planet_id: null, is_unknown_member: true, is_lifespan_indefinite: null}
+
+  - name: fct_film_crafts_keeps_starship_and_vehicle_with_the_same_id_apart
+    model: fct_film_crafts
+    given:
+      - input: ref('stg_films')
+        rows:
+          - film_id: 1
+            starship_urls: ["https://swapi.dev/api/starships/2/"]
+            vehicle_urls: ["https://swapi.dev/api/vehicles/2/"]
+          - film_id: 2
+            starship_urls: []
+            vehicle_urls: []
+    expect:
+      rows:
+        - {film_id: 1, craft_key: 633c3abe4cce44a43bcd97c04f069f86}
+        - {film_id: 1, craft_key: a02664628530cf52167dac411ef2e25d}
 
   - name: dim_films_orders_by_release_date_not_episode_number
     model: dim_films
@@ -42,16 +68,8 @@ unit_tests:
           - {film_id: 4, episode_id: 1, release_date: 1999-05-19}
           - {film_id: 1, episode_id: 4, release_date: 1977-05-25}
           - {film_id: 6, episode_id: 3, release_date: 2005-05-19}
-      - input: ref('int_film_characters')
-        rows: []
-      - input: ref('int_film_planets')
-        rows: []
-      - input: ref('int_film_species')
-        rows: []
-      - input: ref('int_film_crafts')
-        rows: []
     expect:
       rows:
-        - {film_id: 1, release_order: 1, trilogy: original, character_count: 0}
-        - {film_id: 4, release_order: 2, trilogy: prequel, character_count: 0}
-        - {film_id: 6, release_order: 3, trilogy: prequel, character_count: 0}
+        - {film_id: 1, release_order: 1, trilogy: original}
+        - {film_id: 4, release_order: 2, trilogy: prequel}
+        - {film_id: 6, release_order: 3, trilogy: prequel}

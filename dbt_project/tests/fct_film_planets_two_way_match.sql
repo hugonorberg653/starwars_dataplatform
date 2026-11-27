@@ -1,7 +1,7 @@
 -- films.planets must equal the inverse side planets.films. Returns rows present on one side only.
 with canonical as (
 
-    select film_id, planet_id from {{ ref('int_film_planets') }}
+    select film_id, planet_id from {{ ref('fct_film_planets') }}
 
 ),
 

@@ -1,0 +1,44 @@
+version: 2
+
+unit_tests:
+  - name: rpt_character_film_summary_flags_characters_in_every_film
+    model: rpt_character_film_summary
+    given:
+      - input: ref('dim_characters')
+        rows:
+          - {character_id: 1, name: Everywhere}
+          - {character_id: 2, name: Sometimes}
+          - {character_id: 3, name: Never}
+      - input: ref('fct_film_appearances')
+        rows:
+          - {film_id: 1, character_id: 1}
+          - {film_id: 2, character_id: 1}
+          - {film_id: 1, character_id: 2}
+      - input: ref('dim_films')
+        rows:
+          - {film_id: 1}
+          - {film_id: 2}
+    expect:
+      rows:
+        - {character_id: 1, film_count: 2, is_in_all_films: true}
+        - {character_id: 2, film_count: 1, is_in_all_films: false}
+        - {character_id: 3, film_count: 0, is_in_all_films: false}
+
+  - name: rpt_planet_residents_counts_unknown_member_and_planets_without_residents
+    model: rpt_planet_residents
+    given:
+      - input: ref('dim_planets')
+        rows:
+          - {planet_id: 1, name: Tatooine, population: 200000, is_unknown_member: false}
+          - {planet_id: 2, name: Empty, population: 10, is_unknown_member: false}
+          - {planet_id: -1, name: Unknown, population: null, is_unknown_member: true}
+      - input: ref('dim_characters')
+        rows:
+          - {character_id: 1, homeworld_planet_id: 1}
+          - {character_id: 2, homeworld_planet_id: 1}
+          - {character_id: 3, homeworld_planet_id: -1}
+    expect:
+      rows:
+        - {planet_id: 1, resident_count: 2}
+        - {planet_id: 2, resident_count: 0}
+        - {planet_id: -1, resident_count: 1}

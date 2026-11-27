@@ -29,14 +29,14 @@ You help build a take-home data engineer test: ingest data from SWAPI, transform
 ## Architecture and conventions
 
 ```
-SWAPI → Python ingest → DuckDB (raw) → dbt (staging → intermediate → marts) → Streamlit
+SWAPI → Python ingest → DuckDB (raw) → dbt (staging → marts) → Streamlit
 ```
 
 Target layout:
 
 ```
 ingestion/        swapi_ingest.py
-dbt_project/      models/{staging,intermediate,marts}, tests, profiles.yml
+dbt_project/      models/{staging,marts}, tests, profiles.yml
 orchestration/    Dagster definitions
 dashboard/        Streamlit app
 data/              (git-ignored) DuckDB file
@@ -53,8 +53,8 @@ data/              (git-ignored) DuckDB file
 
 ### dbt
 
-- Layers: `staging` (1:1 with sources: rename, cast, `unknown`/`n/a` → NULL, strip commas from numbers, extract IDs from URLs), `intermediate` (unnest URL arrays into bridge tables), `marts` (`dim_*`, `fct_*`).
-- Naming: `stg_<source>`, `int_<a>_<b>`, `dim_<entity>`, `fct_<event>`.
+- Layers: `staging` (1:1 with sources: rename, cast, `unknown`/`n/a` → NULL, strip commas from numbers, extract IDs from URLs), `marts` (`dim_*` attributes only, `fct_*` keys-only facts that unnest the URL arrays, and `rpt_*` aggregates in their own `reporting` layer). Add an intermediate layer only for logic that several models share.
+- Naming: `stg_<source>`, `dim_<entity>`, `fct_<event>`, `rpt_<subject>`.
 - Every model has a description in YAML. Keys have `unique` and `not_null`. Facts have `relationships` tests to dimensions. Use `accepted_values` and one or two custom tests (e.g. height must be positive).
 - Document sources in `sources.yml`. Use `dbt build` rather than separate run and test. Generate docs with `dbt docs generate`.
 - Keep `profiles.yml` inside `dbt_project/` and use `--profiles-dir`, so the project runs the same locally and in a container.

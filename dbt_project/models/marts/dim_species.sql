@@ -4,48 +4,29 @@ with species as (
 
 ),
 
-planets as (
-
-    select planet_id from {{ ref('dim_planets') }}
-
-),
-
-members as (
-
-    select
-        species_id,
-        count(*) as member_count
-    from {{ ref('stg_people') }}
-    group by 1
-
-),
-
 known as (
 
     select
-        s.species_id,
-        s.name,
-        s.classification,
-        s.designation,
-        s.average_height_cm,
-        s.skin_colors,
-        s.hair_colors,
-        s.eye_colors,
-        s.average_lifespan_years,
-        s.is_lifespan_indefinite,
-        s.language,
+        species_id,
+        name,
+        classification,
+        designation,
+        average_height_cm,
+        skin_colors,
+        hair_colors,
+        eye_colors,
+        average_lifespan_years,
+        is_lifespan_indefinite,
+        language,
         -- A species without a homeworld stays NULL. The placeholder planet becomes the unknown member.
         case
-            when s.homeworld_planet_id is null then null
-            else coalesce(p.planet_id, -1)
+            when homeworld_planet_id is null then null
+            else {{ resolve_planet_id('homeworld_planet_id') }}
         end as homeworld_planet_id,
-        coalesce(m.member_count, 0) as member_count,
         false as is_unknown_member,
-        s.loaded_at,
-        s.source_system
-    from species as s
-    left join planets as p on s.homeworld_planet_id = p.planet_id
-    left join members as m on s.species_id = m.species_id
+        loaded_at,
+        source_system
+    from species
 
 ),
 
@@ -62,10 +43,9 @@ unknown_member as (
         cast(null as varchar) as hair_colors,
         cast(null as varchar) as eye_colors,
         cast(null as integer) as average_lifespan_years,
-        false as is_lifespan_indefinite,
+        cast(null as boolean) as is_lifespan_indefinite,
         cast(null as varchar) as language,
         cast(null as integer) as homeworld_planet_id,
-        (select count(*) from {{ ref('stg_people') }} where species_id is null) as member_count,
         true as is_unknown_member,
         cast(null as timestamptz) as loaded_at,
         cast(null as varchar) as source_system
