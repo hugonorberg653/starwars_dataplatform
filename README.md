@@ -7,6 +7,14 @@ SWAPI ──► Python ingest ──► DuckDB raw ──► dbt (staging → ma
               └──────────── orchestrated by Dagster, packaged in Docker ───────────┘
 ```
 
+## What it looks like
+
+The dashboard has an overview plus one page per question. Two of the pages:
+
+![Homeworld density page: characters per million inhabitants by planet](docs/images/dashboard-homeworld-density.png)
+
+![Starship cost vs speed page: scatter plot with a rank correlation](docs/images/dashboard-starship-cost-vs-speed.png)
+
 ## Run it
 
 ### Docker (one command)
@@ -83,6 +91,105 @@ Run dbt from the venv (`.venv\Scripts\dbt.exe`), not from a global install: a gl
 4. **Dashboard** ([dashboard/](dashboard)) reads the marts and reporting models only, through a read-only DuckDB connection.
 5. **Docker** uses one image for three services: `pipeline` (one-shot Dagster run), `dashboard` (waits for `pipeline` to succeed) and `dagster` (UI, optional). Data lives in named volumes.
 
+### Data model
+
+Models flow from the raw tables through staging and marts to reporting. The marts form a star schema: dimensions hold attributes, and each many-to-many relationship in SWAPI is a keys-only fact. `rpt_*` models aggregate the facts and dimensions for the dashboard.
+
+```mermaid
+flowchart LR
+    subgraph raw
+        r_people[raw.people]
+        r_planets[raw.planets]
+        r_films[raw.films]
+        r_species[raw.species]
+        r_vehicles[raw.vehicles]
+        r_starships[raw.starships]
+    end
+    subgraph staging
+        stg_people
+        stg_planets
+        stg_films
+        stg_species
+        stg_vehicles
+        stg_starships
+    end
+    subgraph marts
+        dim_characters
+        dim_planets
+        dim_films
+        dim_species
+        dim_crafts
+        fct_film_appearances
+        fct_film_planets
+        fct_film_species
+        fct_film_crafts
+        fct_craft_pilots
+    end
+    subgraph reporting
+        rpt_film_summary
+        rpt_character_film_summary
+        rpt_planet_residents
+        rpt_starship_pilots
+        rpt_starship_pilot_counts
+    end
+
+    r_people --> stg_people
+    r_planets --> stg_planets
+    r_films --> stg_films
+    r_species --> stg_species
+    r_vehicles --> stg_vehicles
+    r_starships --> stg_starships
+
+    stg_people --> dim_characters & fct_craft_pilots
+    stg_species --> dim_species & dim_characters
+    stg_planets --> dim_planets
+    stg_films --> dim_films & fct_film_appearances & fct_film_planets & fct_film_species & fct_film_crafts
+    stg_vehicles --> dim_crafts
+    stg_starships --> dim_crafts
+
+    dim_films & fct_film_appearances & fct_film_planets & fct_film_species & fct_film_crafts --> rpt_film_summary
+    dim_films & dim_characters & fct_film_appearances --> rpt_character_film_summary
+    dim_planets & dim_characters --> rpt_planet_residents
+    dim_crafts & dim_characters & fct_craft_pilots --> rpt_starship_pilots & rpt_starship_pilot_counts
+```
+
+The star schema in detail (keys only):
+
+```mermaid
+erDiagram
+    dim_films ||--o{ fct_film_appearances : "film_id"
+    dim_characters ||--o{ fct_film_appearances : "character_id"
+    dim_films ||--o{ fct_film_planets : "film_id"
+    dim_planets ||--o{ fct_film_planets : "planet_id"
+    dim_films ||--o{ fct_film_species : "film_id"
+    dim_species ||--o{ fct_film_species : "species_id"
+    dim_films ||--o{ fct_film_crafts : "film_id"
+    dim_crafts ||--o{ fct_film_crafts : "craft_key"
+    dim_characters ||--o{ fct_craft_pilots : "character_id"
+    dim_crafts ||--o{ fct_craft_pilots : "craft_key"
+    dim_planets ||--o{ dim_characters : "homeworld_planet_id"
+    dim_species ||--o{ dim_characters : "species_id"
+    dim_planets ||--o{ dim_species : "homeworld_planet_id"
+
+    dim_films {
+        int film_id PK
+    }
+    dim_characters {
+        int character_id PK
+    }
+    dim_planets {
+        int planet_id PK
+    }
+    dim_species {
+        int species_id PK
+    }
+    dim_crafts {
+        string craft_key PK
+    }
+```
+
+`dim_crafts` combines vehicles and starships (`craft_type` tells them apart; `craft_key` is a hash of type and source ID). `dim_planets` and `dim_species` have an unknown member with key `-1`, so `homeworld_planet_id` and `species_id` are never NULL. Grains, keys and cleaning rules are in [data-model.md](.github/docs/data-model.md).
+
 ### Testing
 
 - **dbt:** keys (`unique`, `not_null`), `relationships` from facts to dimensions, `accepted_values`, and custom generic tests (`positive_value`, `value_between`, `no_silent_null`, `unique_combination_of_columns`).
@@ -129,10 +236,6 @@ More detail per area is in [.github/docs/](.github/docs): [ingestion](.github/do
 
 - **One writer:** DuckDB allows one writer at a time. While a refresh runs (including the 06:00 schedule), dashboard queries fail until it finishes. A real warehouse removes this.
 - **Extra refresh:** starting the `dagster` service makes Compose re-run `pipeline`, which shows as an extra (idempotent) run.
-- **Not served:** `dbt docs` is not served, so lineage is only in the Dagster UI.
-- **Questions not answered:** two plan questions (film with the most characters, characters in all films) have no dashboard page. The marts support them.
-- **Missing pieces:** no CI workflow, no source freshness checks, no sqlfluff config yet.
-- **API availability:** `swapi.dev` is sometimes down, and the pipeline fails rather than falling back. `swapi.tech` is not supported because its response shape differs.
 
 ## In production
 
